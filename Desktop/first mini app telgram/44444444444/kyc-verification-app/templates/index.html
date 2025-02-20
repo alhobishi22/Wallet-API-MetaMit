@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>توثيق الهوية</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .form-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .preview-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+        .preview-image {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            display: none;
+        }
+        video {
+            width: 100%;
+            border-radius: 8px;
+            display: none;
+        }
+        .camera-button {
+            margin: 10px 5px;
+        }
+        .progress-bar {
+            height: 5px;
+            background-color: #007bff;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <div class="text-center mb-4">
+                <h2>توثيق الهوية</h2>
+                <p class="text-muted">KYC Verification</p>
+                <div class="progress-bar"></div>
+            </div>
+
+            <form id="kycForm" class="needs-validation" novalidate>
+                <!-- Step 1: Personal Information -->
+                <div class="step" id="step1">
+                    <h4 class="mb-4">المعلومات الشخصية</h4>
+                    
+                    <div class="mb-3">
+                        <label for="fullName" class="form-label">الاسم الكامل</label>
+                        <input type="text" class="form-control" id="fullName" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="idNumber" class="form-label">رقم الهوية</label>
+                        <input type="text" class="form-control" id="idNumber" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">رقم الجوال</label>
+                        <input type="tel" class="form-control" id="phone" required>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="button" class="btn btn-primary btn-next">التالي</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: ID Verification -->
+                <div class="step" id="step2" style="display: none;">
+                    <h4 class="mb-4">التحقق من الهوية</h4>
+                    
+                    <div class="preview-container">
+                        <video id="idVideo" autoplay playsinline></video>
+                        <img id="idPreview" class="preview-image" alt="صورة الهوية">
+                    </div>
+
+                    <div class="text-center">
+                        <button type="button" class="btn btn-primary camera-button">
+                            <i class="bi bi-camera"></i> فتح الكاميرا
+                        </button>
+                        <button type="button" class="btn btn-success camera-button" style="display: none;">
+                            <i class="bi bi-camera"></i> التقاط صورة
+                        </button>
+                        <button type="button" class="btn btn-danger camera-button" style="display: none;">
+                            <i class="bi bi-arrow-repeat"></i> إعادة التقاط
+                        </button>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <button type="button" class="btn btn-secondary btn-prev">السابق</button>
+                        <button type="button" class="btn btn-primary btn-next">التالي</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Selfie Verification -->
+                <div class="step" id="step3" style="display: none;">
+                    <h4 class="mb-4">التحقق من الصورة الشخصية</h4>
+                    
+                    <div class="preview-container">
+                        <video id="selfieVideo" autoplay playsinline></video>
+                        <img id="selfiePreview" class="preview-image" alt="الصورة الشخصية">
+                    </div>
+
+                    <div class="text-center">
+                        <button type="button" class="btn btn-primary camera-button">
+                            <i class="bi bi-camera"></i> فتح الكاميرا
+                        </button>
+                        <button type="button" class="btn btn-success camera-button" style="display: none;">
+                            <i class="bi bi-camera"></i> التقاط صورة
+                        </button>
+                        <button type="button" class="btn btn-danger camera-button" style="display: none;">
+                            <i class="bi bi-arrow-repeat"></i> إعادة التقاط
+                        </button>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <button type="button" class="btn btn-secondary btn-prev">السابق</button>
+                        <button type="submit" class="btn btn-success">إرسال الطلب</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
