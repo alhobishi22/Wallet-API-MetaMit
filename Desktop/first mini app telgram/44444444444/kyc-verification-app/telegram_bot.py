@@ -1,10 +1,12 @@
-from telegram import Update, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, Update
+from telegram import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
+import telegram
 import asyncio
 import nest_asyncio
 import logging
 import os
 import tempfile
+import time
 
 # إعداد التسجيل
 logging.basicConfig(
@@ -114,35 +116,64 @@ def remove_lock_file():
 def run_bot():
     """تشغيل بوت التلجرام"""
     global _bot_app
+    max_retries = 3
+    retry_delay = 5  # ثواني
     
-    try:
-        # التحقق من عدم وجود نسخة أخرى من البوت
-        if is_bot_running():
-            logger.error("البوت قيد التشغيل بالفعل!")
-            return
-        
-        # إنشاء ملف القفل
-        create_lock_file()
-        
-        # إنشاء event loop جديد
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # إنشاء تطبيق البوت إذا لم يكن موجوداً
-        if _bot_app is None:
-            _bot_app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    for attempt in range(max_retries):
+        try:
+            # التحقق من عدم وجود نسخة أخرى من البوت
+            if is_bot_running():
+                logger.error("البوت قيد التشغيل بالفعل!")
+                return
             
-            # إضافة الأوامر
-            _bot_app.add_handler(CommandHandler("start", start))
+            # إنشاء ملف القفل
+            create_lock_file()
             
-            # إضافة معالج الأخطاء
-            _bot_app.add_error_handler(error_handler)
-        
-        # تشغيل البوت
-        _bot_app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
-    except Exception as e:
-        logger.error(f"خطأ في تشغيل البوت: {e}")
-        raise
-    finally:
-        # إزالة ملف القفل عند الإغلاق
-        remove_lock_file()
+            # إنشاء event loop جديد
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # إنشاء تطبيق البوت مع إعدادات مخصصة
+            if _bot_app is None:
+                builder = Application.builder().token(TELEGRAM_BOT_TOKEN)
+                # إضافة إعدادات للتعامل مع مشاكل الاتصال
+                builder.connect_timeout = 30.0  # زيادة مهلة الاتصال
+                builder.read_timeout = 30.0
+                builder.write_timeout = 30.0
+                _bot_app = builder.build()
+                
+                # إضافة الأوامر
+                _bot_app.add_handler(CommandHandler("start", start))
+                
+                # إضافة معالج الأخطاء
+                _bot_app.add_error_handler(error_handler)
+            
+            logger.info(f"محاولة تشغيل البوت (المحاولة {attempt + 1} من {max_retries})")
+            # تشغيل البوت
+            _bot_app.run_polling(
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True,
+                pool_timeout=30.0,
+                connect_timeout=30.0,
+                read_timeout=30.0,
+                write_timeout=30.0
+            )
+            break  # إذا نجح التشغيل، نخرج من الحلقة
+            
+        except telegram.error.TimedOut as e:
+            logger.warning(f"انتهت مهلة الاتصال (المحاولة {attempt + 1}): {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"إعادة المحاولة بعد {retry_delay} ثواني...")
+                time.sleep(retry_delay)
+                continue
+            else:
+                logger.error("فشلت جميع محاولات الاتصال")
+                raise
+                
+        except Exception as e:
+            logger.error(f"خطأ في تشغيل البوت: {e}")
+            raise
+            
+        finally:
+            # إزالة ملف القفل عند الإغلاق
+            remove_lock_file()
