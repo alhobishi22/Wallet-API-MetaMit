@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حالة الطلب</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .status-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        
+        .status-header {
+            margin-bottom: 2rem;
+        }
+        
+        .status-title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .status-icon {
+            font-size: 4rem;
+            margin: 1.5rem 0;
+        }
+        
+        .status-message {
+            color: var(--secondary-color);
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .status-info {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .status-label {
+            color: var(--secondary-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-value {
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+        
+        .status-pending {
+            color: #ffc107;
+        }
+        
+        .status-approved {
+            color: #28a745;
+        }
+        
+        .status-rejected {
+            color: #dc3545;
+        }
+        
+        .status-message-box {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .status-message-box .message-title {
+            color: var(--secondary-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-message-box .message-content {
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .loading .status-icon {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-card">
+            <div class="status-header">
+                <h1 class="status-title">حالة الطلب</h1>
+            </div>
+            
+            <div id="loading" class="loading">
+                <div class="status-icon">⌛</div>
+                <h2 class="status-message">جاري معالجة الطلب</h2>
+                <p class="text-muted">يرجى الانتظار بينما نتحقق من بياناتك...</p>
+            </div>
+            
+            <div id="status-details" style="display: none;">
+                <div class="status-info">
+                    <div class="status-label">رقم الطلب</div>
+                    <div class="status-value" id="request-id">{{ request_id }}</div>
+                </div>
+                
+                <div class="status-info">
+                    <div class="status-label">تاريخ التقديم</div>
+                    <div class="status-value" id="submission-date"></div>
+                </div>
+                
+                <div class="status-info">
+                    <div class="status-label">الحالة</div>
+                    <div class="status-value" id="status-text"></div>
+                </div>
+                
+                <div id="message-container" class="status-message-box" style="display: none;">
+                    <div class="message-title">رسالة</div>
+                    <div class="message-content" id="status-message"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const requestId = '{{ request_id }}';
+        const loadingElement = document.getElementById('loading');
+        const statusDetailsElement = document.getElementById('status-details');
+        const statusTextElement = document.getElementById('status-text');
+        const messageContainer = document.getElementById('message-container');
+        const statusMessageElement = document.getElementById('status-message');
+        const submissionDateElement = document.getElementById('submission-date');
+
+        const statusMessages = {
+            'pending': 'قيد المراجعة',
+            'approved': 'تم الموافقة على طلبك',
+            'rejected': 'تم رفض طلبك'
+        };
+
+        const statusIcons = {
+            'pending': '⌛',
+            'approved': '✅',
+            'rejected': '❌'
+        };
+
+        async function checkStatus() {
+            try {
+                const response = await fetch(`/api/status/${requestId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // تحديث حالة الطلب
+                    const statusText = statusMessages[data.status] || data.status;
+                    const statusIcon = statusIcons[data.status] || '❓';
+                    
+                    // تحديث العناصر
+                    document.querySelector('.status-icon').textContent = statusIcon;
+                    statusTextElement.textContent = statusText;
+                    statusTextElement.className = `status-value status-${data.status}`;
+                    
+                    // تحديث تاريخ التقديم
+                    if (data.created_at) {
+                        const date = new Date(data.created_at);
+                        const options = { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        };
+                        submissionDateElement.textContent = date.toLocaleString('ar', options);
+                    }
+                    
+                    // إظهار الرسالة إذا كانت موجودة
+                    if (data.message) {
+                        messageContainer.style.display = 'block';
+                        statusMessageElement.textContent = data.message;
+                    } else {
+                        messageContainer.style.display = 'none';
+                    }
+                    
+                    // إظهار تفاصيل الحالة
+                    loadingElement.style.display = 'none';
+                    statusDetailsElement.style.display = 'block';
+                    
+                    // إيقاف التحديث التلقائي إذا كانت الحالة نهائية
+                    if (data.status === 'approved' || data.status === 'rejected') {
+                        clearInterval(statusInterval);
+                    }
+                    
+                } else {
+                    throw new Error(data.error || 'حدث خطأ أثناء التحقق من حالة الطلب');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                statusTextElement.textContent = 'حدث خطأ أثناء التحقق من حالة الطلب';
+                statusTextElement.className = 'status-value status-error';
+            }
+        }
+
+        // التحقق من الحالة كل 5 ثواني
+        checkStatus();
+        const statusInterval = setInterval(checkStatus, 5000);
+    </script>
+</body>
+</html>
