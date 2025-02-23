@@ -197,7 +197,20 @@ def submit_kyc():
                 # الحصول على chat_id من Telegram WebApp
                 chat_id = request.form.get('chat_id')
                 if not chat_id:
-                    logger.warning("لم يتم توفير chat_id")
+                    # محاولة الحصول على chat_id من الهيدر
+                    telegram_data = request.headers.get('X-Telegram-Init-Data')
+                    if telegram_data:
+                        try:
+                            import json
+                            from urllib.parse import parse_qs
+                            data = parse_qs(telegram_data)
+                            user_data = json.loads(data.get('user', ['{}'])[0])
+                            chat_id = user_data.get('id')
+                        except Exception as e:
+                            logger.error(f"خطأ في استخراج chat_id من الهيدر: {e}")
+                    
+                    if not chat_id:
+                        logger.warning("لم يتم توفير chat_id")
                 
                 cur.execute('''
                     INSERT INTO requests (
@@ -232,15 +245,27 @@ def submit_kyc():
 
                     # إرسال إشعار للعميل
                     if chat_id:
-                        success_message = (
-                            "✅ *تم استلام طلبك بنجاح*\n\n"
-                            f"🔍 معرف الطلب: `{request_id}`\n\n"
-                            "سيتم مراجعة طلبك وإبلاغك بالنتيجة قريباً\\."
-                        )
-                        loop.run_until_complete(send_status_notification(chat_id, request_id, success_message))
-                        logger.info(f"تم إرسال إشعار للعميل {chat_id}")
+                        try:
+                            success_message = (
+                                "✅ *تم استلام طلبك بنجاح*\n\n"
+                                f"🔍 معرف الطلب: `{request_id}`\n\n"
+                                "سيتم مراجعة طلبك وإبلاغك بالنتيجة قريباً\\."
+                            )
+                            loop.run_until_complete(send_status_notification(chat_id, request_id, success_message))
+                            logger.info(f"تم إرسال إشعار للعميل {chat_id}")
+                        except Exception as e:
+                            logger.error(f"خطأ في إرسال الإشعار للعميل: {e}")
+                            # محاولة إعادة تشغيل البوت وإرسال الإشعار مرة أخرى
+                            try:
+                                await shutdown_bot()
+                                time.sleep(1)
+                                if ensure_bot_running():
+                                    loop.run_until_complete(send_status_notification(chat_id, request_id, success_message))
+                                    logger.info("تم إرسال الإشعار للعميل بعد إعادة تشغيل البوت")
+                            except Exception as e2:
+                                logger.error(f"فشل في إرسال الإشعار حتى بعد إعادة تشغيل البوت: {e2}")
                     else:
-                        logger.warning("لم يتم توفير chat_id للعميل")
+                        logger.warning("لم يتم توفير chat_id للعميل - سيتم إرسال الإشعار فقط للأدمن")
 
                 except Exception as e:
                     logger.error(f"خطأ في إرسال الإشعارات: {str(e)}")

@@ -3,6 +3,7 @@ import time
 import logging
 import asyncio
 import threading
+from datetime import datetime
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, CallbackQuery, ForceReply
 from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 
@@ -17,8 +18,16 @@ _event_loop = None
 
 def ensure_bot_running():
     """التأكد من أن البوت يعمل"""
-    global _bot_instance, _bot_running
+    global _bot_instance, _bot_running, _event_loop
     if _bot_instance is None or not _bot_running:
+        # إيقاف أي نسخة قديمة من البوت
+        try:
+            if _bot_instance:
+                asyncio.run_coroutine_threadsafe(shutdown_bot(), _event_loop)
+                time.sleep(1)  # انتظار لإغلاق النسخة القديمة
+        except Exception as e:
+            logger.warning(f"خطأ في إيقاف النسخة القديمة من البوت: {e}")
+
         for i in range(_max_retries):
             try:
                 _bot_instance = create_application()
@@ -27,15 +36,28 @@ def ensure_bot_running():
                     def run_bot_async():
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
+                        global _event_loop
+                        _event_loop = loop
                         try:
                             loop.run_until_complete(run_bot(_bot_instance))
                         finally:
                             loop.close()
+                            global _bot_running
+                            _bot_running = False
+                            _event_loop = None
 
-                    bot_thread = threading.Thread(target=run_bot_async, daemon=True)
+                    # إيقاف أي thread قديم
+                    for thread in threading.enumerate():
+                        if thread.name == "telegram_bot":
+                            try:
+                                thread.join(timeout=1)
+                            except Exception:
+                                pass
+
+                    bot_thread = threading.Thread(target=run_bot_async, name="telegram_bot", daemon=True)
                     bot_thread.start()
                     _bot_running = True
-                    logger.info("تم إعادة تشغيل البوت بنجاح")
+                    logger.info("تم تشغيل البوت بنجاح")
                     return True
             except Exception as e:
                 logger.error(f"محاولة {i+1}/{_max_retries} لتشغيل البوت فشلت: {e}")
