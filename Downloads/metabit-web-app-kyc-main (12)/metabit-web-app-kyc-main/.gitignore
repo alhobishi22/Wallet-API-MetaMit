@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+venv/
+.idea/
+kyc-web-app27-02.zip
+kyc-web-app27-02.zip

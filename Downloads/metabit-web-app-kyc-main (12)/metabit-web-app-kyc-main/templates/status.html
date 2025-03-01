@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حالة طلب التحقق من الهوية</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .status-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-top: 2rem;
+            text-align: center;
+        }
+        .status-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        .status-pending {
+            color: #ffc107;
+        }
+        .status-approved {
+            color: #28a745;
+        }
+        .status-rejected {
+            color: #dc3545;
+        }
+        .registration-code {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 1.2rem;
+            margin: 15px 0;
+            border: 1px dashed #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="status-container">
+                    <div class="status-icon">
+                        {% if status == 'pending' %}
+                            <i class="bi bi-clock-fill status-pending"></i>
+                        {% elif status == 'approved' %}
+                            <i class="bi bi-check-circle-fill status-approved"></i>
+                        {% else %}
+                            <i class="bi bi-x-circle-fill status-rejected"></i>
+                        {% endif %}
+                    </div>
+                    
+                    <h2 class="mb-4">حالة الطلب: 
+                        {% if status == 'pending' %}
+                            قيد المراجعة
+                        {% elif status == 'approved' %}
+                            تمت الموافقة
+                        {% else %}
+                            مرفوض
+                        {% endif %}
+                    </h2>
+                    
+                    <p class="mb-3">رقم الطلب: {{ application_id }}</p>
+                    <p class="mb-4">تاريخ التقديم: {{ created_at }}</p>
+                    
+                    {% if status == 'pending' %}
+                        <div class="alert alert-info">
+                            جاري مراجعة طلبك. سيتم إخطارك عند اكتمال المراجعة.
+                        </div>
+                    {% elif status == 'approved' %}
+                        <div class="alert alert-success">
+                            <h4>تهانينا! 🎉</h4>
+                            <p>تمت الموافقة على طلب التوثيق الخاص بك بنجاح.</p>
+                            <p>رمز التسجيل الخاص بك:</p>
+                            <div class="registration-code">{{ registration_code }}</div>
+                            <p>خطوات التفعيل:</p>
+                            <ol class="text-start">
+                                <li>انسخ رمز التسجيل واحتفظ به.</li>
+                                <li>انتقل إلى بوت الإيداع الرسمي والصق الرمز لتفعيل حسابك والاستفادة من جميع الخدمات.</li>
+                            </ol>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-danger">
+                            <h4>عذراً، تم رفض طلبك</h4>
+                            {% if rejection_reason %}
+                                <p>سبب الرفض: {{ rejection_reason }}</p>
+                            {% else %}
+                                <p>لم يتم تحديد سبب للرفض.</p>
+                            {% endif %}
+                            <p>يمكنك تقديم طلب جديد بعد معالجة سبب الرفض.</p>
+                        </div>
+                    {% endif %}
+                    
+                    <a href="javascript:window.close();" class="btn btn-primary mt-3">إغلاق</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

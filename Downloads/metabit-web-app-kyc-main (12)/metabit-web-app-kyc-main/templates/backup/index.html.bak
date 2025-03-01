@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaBit KYC</title>
+    
+    <!-- إضافة خط Cairo من Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap RTL -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bootstrap-4/bootstrap-4.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Telegram WebApp API -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --accent-color: #3b82f6;
+            --background-color: #f8fafc;
+            --success-color: #22c55e;
+        }
+        
+        body {
+            background: var(--background-color);
+            font-family: 'Cairo', sans-serif;
+            min-height: 100vh;
+            padding: 2rem 0;
+        }
+        
+        .form-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            padding: 2.5rem;
+            margin-top: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin: 2rem 0 3rem;
+            position: relative;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .step.active .step-icon {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .step-title {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-top: 0.5rem;
+        }
+
+        .step.active .step-title {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .progress-line {
+            position: absolute;
+            top: 25px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e2e8f0;
+            z-index: 0;
+        }
+
+        .form-control {
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #475569;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+            color: #1e293b;
+        }
+
+        .camera-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .video-container {
+            width: 100%;
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* قلب الكاميرا الأمامية */
+        }
+        .preview-container {
+            width: 100%;
+            position: relative;
+            display: none;
+        }
+        .preview-container img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        @media (max-width: 768px) {
+            .camera-container {
+                max-width: 100%;
+            }
+            .video-container {
+                aspect-ratio: 3/4; /* نسبة أبعاد مناسبة للهواتف */
+            }
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            width: 120px;
+            height: auto;
+            margin: 0 auto;
+        }
+
+        .brand-title {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-top: 1rem;
+            text-align: center;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .review-container .card {
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .review-photo {
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        .review-photo img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            color: var(--success-color);
+        }
+        
+        .status-details {
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .terms-modal-container {
+            font-family: 'Cairo', sans-serif;
+        }
+        .terms-modal-popup {
+            width: 600px;
+            max-width: 90%;
+        }
+        .terms-modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2563eb;
+        }
+        .terms-modal-confirm {
+            background-color: #22c55e;
+            border-color: #22c55e;
+        }
+        .terms-modal-cancel {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="form-container">
+                    <div class="logo-container">
+                        <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="شعار نظام التحقق من الهوية" class="logo">
+                        <h1 class="brand-title">MetaBit KYC</h1>
+                    </div>
+                    
+                    <div class="progress-steps">
+                        <div class="progress-line"></div>
+                        <div class="step active" id="step1">
+                            <div class="step-icon">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <div class="step-title">المعلومات الشخصية</div>
+                        </div>
+                        <div class="step" id="step2">
+                            <div class="step-icon">
+                                <i class="bi bi-card-image"></i>
+                            </div>
+                            <div class="step-title">صورة الهوية</div>
+                        </div>
+                        <div class="step" id="step3">
+                            <div class="step-icon">
+                                <i class="bi bi-camera-fill"></i>
+                            </div>
+                            <div class="step-title">صورة سيلفي</div>
+                        </div>
+                        <div class="step" id="step4">
+                            <div class="step-icon">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </div>
+                            <div class="step-title">المراجعة والإرسال</div>
+                        </div>
+                    </div>
+
+                    <form id="kycForm" class="needs-validation" novalidate>
+                        <div class="step-content" id="step1Content">
+                            <h5 class="mb-4">المعلومات الشخصية</h5>
+                            <div class="mb-3">
+                                <label for="fullName" class="form-label">الاسم الرباعي</label>
+                                <input type="text" class="form-control" id="fullName" required placeholder="أدخل الاسم الرباعي الكامل">
+                                
+                                <div class="invalid-feedback">
+                                    يرجى إدخال الاسم الرباعي
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="phoneNumber" class="form-label">رقم الهاتف</label>
+                                <input type="tel" class="form-control" id="phoneNumber" required placeholder="7xxxxxxxx">
+                                
+                                <div class="invalid-feedback">
+                                    يرجى إدخال رقم الهاتف
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="address" class="form-label">عنوان السكن</label>
+                                <textarea class="form-control" id="address" rows="3" required placeholder="أدخل عنوان السكن بالتفصيل"></textarea>
+                                
+                                <div class="invalid-feedback">
+                                    يرجى إدخال عنوان السكن
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-end mt-4">
+                                <button type="button" class="btn btn-primary w-100" onclick="validateAndNext(1)">التالي</button>
+                            </div>
+                        </div>
+
+                        <div class="step-content d-none" id="step2Content">
+                            <h5 class="mb-4">صورة الهوية</h5>
+                            <div class="camera-container mb-4">
+                                <div id="idVideoContainer" class="video-container mb-3">
+                                    <!-- هنا سيتم عرض الكاميرا -->
+                                </div>
+                                <div id="idPreview" class="preview-container mb-3">
+                                    <!-- هنا سيتم عرض الصورة الملتقطة -->
+                                </div>
+                                <div class="text-center">
+                                    <button type="button" class="btn btn-primary w-100" id="idCaptureButton" onclick="toggleCapture('id')">
+                                        <i class="fas fa-camera me-2"></i>التقاط صورة
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between gap-3 mt-4">
+                                <button type="button" class="btn btn-secondary flex-grow-1" onclick="showStep(1)">السابق</button>
+                                <button type="button" class="btn btn-primary flex-grow-1" onclick="validateAndNext(2)">التالي</button>
+                            </div>
+                        </div>
+
+                        <div class="step-content d-none" id="step3Content">
+                            <h5 class="mb-4">الصورة الشخصية</h5>
+                            <div class="camera-container mb-4">
+                                <div id="selfieVideoContainer" class="video-container mb-3">
+                                    <!-- هنا سيتم عرض الكاميرا -->
+                                </div>
+                                <div id="selfiePreview" class="preview-container mb-3">
+                                    <!-- هنا سيتم عرض الصورة الملتقطة -->
+                                </div>
+                                <div class="text-center">
+                                    <button type="button" class="btn btn-primary w-100" id="selfieCaptureButton" onclick="toggleCapture('selfie')">
+                                        <i class="fas fa-camera me-2"></i>التقاط صورة
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between gap-3 mt-4">
+                                <button type="button" class="btn btn-secondary flex-grow-1" onclick="showStep(2)">السابق</button>
+                                <button type="button" class="btn btn-primary flex-grow-1" onclick="validateAndNext(3)">التالي</button>
+                            </div>
+                        </div>
+
+                        <div class="step-content d-none" id="step4Content">
+                            <h5 class="mb-4">مراجعة المعلومات</h5>
+                            <div class="review-container">
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <h6 class="card-title mb-3">المعلومات الشخصية</h6>
+                                        <div class="row mb-2">
+                                            <div class="col-4 text-muted">الاسم الرباعي:</div>
+                                            <div class="col-8" id="reviewFullName"></div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-4 text-muted">رقم الهاتف:</div>
+                                            <div class="col-8" id="reviewPhone"></div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-4 text-muted">العنوان:</div>
+                                            <div class="col-8" id="reviewAddress"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <h6 class="card-title mb-3">الصور</h6>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="text-muted d-block mb-2">صورة الهوية:</label>
+                                                <div id="reviewIdPhoto" class="review-photo"></div>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="text-muted d-block mb-2">الصورة الشخصية:</label>
+                                                <div id="reviewSelfiePhoto" class="review-photo"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between gap-3 mt-4">
+                                <button type="button" class="btn btn-secondary flex-grow-1" onclick="showStep(3)">السابق</button>
+                                <button type="button" class="btn btn-primary flex-grow-1" id="submitButton" onclick="showTermsAndConditions()">
+                                    <i class="bi bi-check-circle me-2"></i> إرسال الطلب
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- صفحة حالة الطلب -->
+                        <div class="step-content d-none" id="applicationStatus">
+                            <div class="text-center mb-5">
+                                <div class="success-icon mb-4">
+                                    <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                                </div>
+                                <h4 class="mb-3">تم إرسال طلبك بنجاح!</h4>
+                                <p class="text-muted">رقم الطلب: <span id="applicationId" class="fw-bold"></span></p>
+                                <p class="text-muted">سيتم مراجعة طلبك وإبلاغك بالنتيجة قريباً</p>
+                            </div>
+                            <div class="status-details bg-light p-4 rounded-3 mb-4">
+                                <h5 class="mb-4">تفاصيل الطلب</h5>
+                                <div class="row mb-3">
+                                    <div class="col-4 text-muted">حالة الطلب:</div>
+                                    <div class="col-8">
+                                        <span class="badge bg-warning" id="statusBadge">قيد المراجعة</span>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-4 text-muted">تاريخ التقديم:</div>
+                                    <div class="col-8" id="submissionDate"></div>
+                                </div>
+                                <div class="row mb-3" id="registrationCodeRow" style="display: none;">
+                                    <div class="col-4 text-muted">رمز التسجيل:</div>
+                                    <div class="col-8" id="registrationCode"></div>
+                                </div>
+                                <div class="row mb-3" id="rejectionReasonRow" style="display: none;">
+                                    <div class="col-4 text-muted">سبب الرفض:</div>
+                                    <div class="col-8" id="rejectionReason"></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-4 text-muted">الوقت المتوقع للمراجعة:</div>
+                                    <div class="col-8">1-2 يوم عمل</div>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <button type="button" class="btn btn-primary" onclick="checkApplicationStatus()">تحديث حالة الطلب</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentStep = 1;
+        const capturedImages = {
+            id: null,
+            selfie: null
+        };
+        let telegramUserId = null;  // متغير لتخزين معرف المستخدم
+        let mediaStream = null;     // متغير لتخزين تدفق الوسائط (الكاميرا)
+        let videoElement = null;    // متغير لتخزين عنصر الفيديو
+        
+        // التقاط معرف المستخدم من تطبيق تلغرام عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', () => {
+            updateProgressBar();
+            
+            // استخراج معرف المستخدم من Telegram WebApp إذا كان متاحاً
+            if (window.Telegram && window.Telegram.WebApp) {
+                try {
+                    telegramUserId = window.Telegram.WebApp.initDataUnsafe.user.id;
+                    console.log("تم استخراج معرف المستخدم من تلغرام:", telegramUserId);
+                } catch (e) {
+                    console.error("خطأ في استخراج معرف المستخدم من تلغرام:", e);
+                }
+            }
+            
+            const inputs = document.querySelectorAll('input, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    this.classList.remove('is-invalid');
+                });
+            });
+        });
+
+        // دالة لتحديث شريط التقدم
+        function updateProgressBar() {
+            const steps = document.querySelectorAll('.step');
+            steps.forEach((step, index) => {
+                if (index + 1 < currentStep) {
+                    step.classList.add('completed');
+                } else if (index + 1 === currentStep) {
+                    step.classList.add('active');
+                } else {
+                    step.classList.remove('completed', 'active');
+                }
+            });
+        }
+
+        // دالة لعرض خطوة معينة
+        function showStep(stepNumber) {
+            if (stepNumber < 1 || stepNumber > 4) return;
+
+            // إيقاف الكاميرا إذا كانت قيد التشغيل
+            if (mediaStream) {
+                stopMediaStream();
+            }
+
+            // إخفاء جميع الخطوات
+            document.querySelectorAll('.step-content').forEach(step => {
+                step.classList.add('d-none');
+            });
+
+            // إظهار الخطوة المطلوبة
+            const targetStep = document.getElementById(`step${stepNumber}Content`);
+            if (targetStep) {
+                targetStep.classList.remove('d-none');
+                currentStep = stepNumber;
+                updateProgressBar();
+
+                // تحديث معلومات المراجعة إذا كانت الخطوة الأخيرة
+                if (stepNumber === 4) {
+                    updateReviewInfo();
+                }
+                // تهيئة الكاميرا للخطوات المتعلقة بالصور
+                else if (stepNumber === 2) {
+                    initializeCamera('id');
+                } else if (stepNumber === 3) {
+                    initializeCamera('selfie');
+                }
+            }
+        }
+
+        // دالة للتبديل بين التقاط الصورة وإعادة المحاولة
+        function toggleCapture(type) {
+            const button = document.getElementById(`${type}CaptureButton`);
+            const isCapturing = !capturedImages[type];
+
+            if (isCapturing) {
+                // التقاط صورة جديدة
+                captureImage(type);
+                button.innerHTML = '<i class="fas fa-redo me-2"></i>إعادة التقاط';
+                button.classList.remove('btn-primary');
+                button.classList.add('btn-secondary');
+            } else {
+                // إعادة المحاولة
+                retryCamera(type);
+                button.innerHTML = '<i class="fas fa-camera me-2"></i>التقاط صورة';
+                button.classList.remove('btn-secondary');
+                button.classList.add('btn-primary');
+            }
+        }
+
+        // دالة لتهيئة الكاميرا
+        async function initializeCamera(type) {
+            try {
+                // إيقاف أي تدفق وسائط حالي
+                if (mediaStream) {
+                    stopMediaStream();
+                }
+
+                // التحقق من دعم الكاميرا
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('المتصفح لا يدعم الوصول إلى الكاميرا');
+                }
+
+                videoElement = document.createElement('video');
+                videoElement.setAttribute('playsinline', ''); // مهم للـ iOS
+                videoElement.setAttribute('autoplay', '');
+                videoElement.setAttribute('muted', '');
+                videoElement.setAttribute('webkit-playsinline', ''); // لدعم Safari
+                
+                // محاولة الحصول على الكاميرا المناسبة
+                let constraints;
+                if (type === 'selfie') {
+                    constraints = {
+                        video: {
+                            facingMode: 'user',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    };
+                } else {
+                    // للهوية نحاول استخدام الكاميرا الخلفية أولاً
+                    constraints = {
+                        video: {
+                            facingMode: { exact: 'environment' },
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
+                        },
+                        audio: false
+                    };
+                }
+
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+                } catch (err) {
+                    // إذا فشل استخدام الكاميرا الخلفية، نجرب الكاميرا الأمامية
+                    if (type === 'id') {
+                        constraints.video.facingMode = 'user';
+                        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    } else {
+                        throw err;
+                    }
+                }
+
+                videoElement.srcObject = mediaStream;
+                
+                // التعامل مع حدث loadedmetadata
+                await new Promise((resolve) => {
+                    videoElement.onloadedmetadata = () => {
+                        videoElement.play().then(resolve).catch(resolve);
+                    };
+                });
+
+                const container = document.getElementById(`${type}VideoContainer`);
+                if (container) {
+                    container.innerHTML = '';
+                    container.appendChild(videoElement);
+                    container.style.display = 'block';
+                }
+
+                // إخفاء حاوية الصورة المعاينة
+                const previewContainer = document.getElementById(`${type}Preview`);
+                if (previewContainer) {
+                    previewContainer.style.display = 'none';
+                    previewContainer.innerHTML = '';
+                }
+
+                // تحديث نص الزر
+                const captureButton = document.getElementById(`${type}CaptureButton`);
+                if (captureButton) {
+                    captureButton.innerHTML = '<i class="fas fa-camera me-2"></i>التقاط صورة';
+                }
+
+            } catch (error) {
+                console.error('خطأ في الوصول إلى الكاميرا:', error);
+                
+                let errorMessage = 'حدث خطأ في الوصول إلى الكاميرا. ';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = 'يرجى السماح بالوصول إلى الكاميرا من إعدادات المتصفح.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'لم يتم العثور على كاميرا متصلة.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage = 'الكاميرا قيد الاستخدام من قبل تطبيق آخر.';
+                } else if (error.message === 'المتصفح لا يدعم الوصول إلى الكاميرا') {
+                    errorMessage = 'المتصفح الخاص بك لا يدعم الوصول إلى الكاميرا. يرجى استخدام متصفح حديث.';
+                } else {
+                    errorMessage += 'يرجى التأكد من تفعيل الكاميرا والمحاولة مرة أخرى.';
+                }
+
+                await Swal.fire({
+                    title: 'خطأ في الكاميرا',
+                    text: errorMessage,
+                    icon: 'error',
+                    confirmButtonText: 'حسناً'
+                });
+            }
+        }
+
+        // دالة لإيقاف الكاميرا
+        function stopMediaStream() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            if (videoElement) {
+                videoElement.srcObject = null;
+            }
+        }
+
+        // دالة للتقاط الصورة
+        function captureImage(type) {
+            try {
+                const video = document.querySelector(`#${type}VideoContainer video`);
+                if (!video || !video.srcObject) {
+                    throw new Error('الكاميرا غير متاحة');
+                }
+
+                const canvas = document.createElement('canvas');
+                // استخدام أبعاد الفيديو الفعلية
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                const context = canvas.getContext('2d');
+                
+                // إذا كانت الكاميرا الأمامية، نعكس الصورة
+                if (type === 'selfie') {
+                    context.scale(-1, 1);
+                    context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+                } else {
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                }
+
+                // تحسين جودة الصورة
+                const imageData = canvas.toDataURL('image/jpeg', 0.9);
+                capturedImages[type] = imageData;
+
+                // عرض الصورة الملتقطة
+                const previewContainer = document.getElementById(`${type}Preview`);
+                if (previewContainer) {
+                    previewContainer.innerHTML = `<img src="${imageData}" alt="${type} preview">`;
+                    previewContainer.style.display = 'block';
+                }
+
+                // إيقاف الكاميرا
+                stopMediaStream();
+
+                // إخفاء حاوية الفيديو
+                const videoContainer = document.getElementById(`${type}VideoContainer`);
+                if (videoContainer) {
+                    videoContainer.style.display = 'none';
+                }
+
+                // تحديث نص الزر
+                const captureButton = document.getElementById(`${type}CaptureButton`);
+                if (captureButton) {
+                    captureButton.innerHTML = '<i class="fas fa-redo me-2"></i>إعادة التقاط';
+                }
+
+            } catch (error) {
+                console.error('خطأ في التقاط الصورة:', error);
+                Swal.fire({
+                    title: 'خطأ',
+                    text: 'حدث خطأ أثناء التقاط الصورة. يرجى المحاولة مرة أخرى.',
+                    icon: 'error',
+                    confirmButtonText: 'حسناً'
+                });
+            }
+        }
+
+        // دالة لإعادة المحاولة
+        function retryCamera(type) {
+            capturedImages[type] = null;
+            
+            // إظهار حاوية الفيديو وإخفاء الصورة الملتقطة
+            const videoContainer = document.getElementById(`${type}VideoContainer`);
+            const previewContainer = document.getElementById(`${type}Preview`);
+            
+            if (videoContainer) {
+                videoContainer.style.display = 'block';
+            }
+            if (previewContainer) {
+                previewContainer.style.display = 'none';
+                previewContainer.innerHTML = '';
+            }
+
+            // إعادة تشغيل الكاميرا
+            initializeCamera(type);
+        }
+
+        // دالة للتحقق من الحقول والانتقال للخطوة التالية
+        async function validateAndNext(step) {
+            let isValid = true;
+            let errorMessage = '';
+            
+            switch(step) {
+                case 1:
+                    const fullName = document.getElementById('fullName').value.trim();
+                    const phoneNumber = document.getElementById('phoneNumber').value.trim();
+                    const address = document.getElementById('address').value.trim();
+                    
+                    // التحقق من الاسم الرباعي (يجب أن يحتوي على 4 كلمات على الأقل)
+                    const nameWords = fullName.split(/\s+/).filter(word => word.length > 0);
+                    if (nameWords.length < 4) {
+                        isValid = false;
+                        errorMessage = 'يجب إدخال الاسم الرباعي الكامل (أربعة أسماء على الأقل)';
+                        break;
+                    }
+                    
+                    // التحقق من رقم الهاتف (يجب أن يكون 9 أرقام ويبدأ برقم 7)
+                    if (!/^7\d{8}$/.test(phoneNumber)) {
+                        isValid = false;
+                        errorMessage = 'يرجى ادخال رقم هاتفك الصحيح';
+                        break;
+                    }
+                    
+                    // التحقق من عنوان السكن
+                    if (address.length < 10) {
+                        isValid = false;
+                        errorMessage = 'يرجى إدخال عنوان سكن صحيح ومفصل';
+                        break;
+                    }
+                    
+                    if (!fullName || !phoneNumber || !address) {
+                        isValid = false;
+                        errorMessage = 'يرجى تعبئة جميع الحقول المطلوبة';
+                    }
+                    break;
+                case 2:
+                    if (!capturedImages.id) {
+                        isValid = false;
+                        errorMessage = 'يرجى التقاط صورة الهوية';
+                    }
+                    break;
+                case 3:
+                    if (!capturedImages.selfie) {
+                        isValid = false;
+                        errorMessage = 'يرجى التقاط الصورة الشخصية';
+                    }
+                    break;
+            }
+            
+            if (!isValid) {
+                await Swal.fire({
+                    title: 'تنبيه',
+                    text: errorMessage,
+                    icon: 'warning',
+                    confirmButtonText: 'حسناً'
+                });
+                return;
+            }
+            
+            showStep(step + 1);
+        }
+
+        // دالة لتحديث معلومات المراجعة
+        function updateReviewInfo() {
+            // تحديث المعلومات الشخصية
+            document.getElementById('reviewFullName').textContent = document.getElementById('fullName').value || 'غير محدد';
+            document.getElementById('reviewPhone').textContent = document.getElementById('phoneNumber').value || 'غير محدد';
+            document.getElementById('reviewAddress').textContent = document.getElementById('address').value || 'غير محدد';
+
+            // تحديث الصور
+            if (capturedImages.id) {
+                document.getElementById('reviewIdPhoto').innerHTML = `<img src="${capturedImages.id}" alt="صورة الهوية" class="img-fluid">`;
+            }
+            if (capturedImages.selfie) {
+                document.getElementById('reviewSelfiePhoto').innerHTML = `<img src="${capturedImages.selfie}" alt="الصورة الشخصية" class="img-fluid">`;
+            }
+        }
+
+        // دالة لإرسال النموذج
+        async function submitForm() {
+            try {
+                // التحقق من اكتمال جميع البيانات المطلوبة
+                const fullName = document.getElementById('fullName').value;
+                const phoneNumber = document.getElementById('phoneNumber').value;
+                const address = document.getElementById('address').value;
+
+                if (!fullName || !phoneNumber || !address) {
+                    throw new Error('يرجى ملء جميع الحقول المطلوبة');
+                }
+
+                if (!capturedImages.id || !capturedImages.selfie) {
+                    throw new Error('يرجى التقاط صورة الهوية والصورة الشخصية');
+                }
+
+                // تجميع البيانات
+                const formData = {
+                    fullName: fullName,
+                    phoneNumber: phoneNumber,
+                    address: address,
+                    idPhoto: capturedImages.id,
+                    selfiePhoto: capturedImages.selfie
+                };
+                
+                // إضافة معرف المستخدم في تلغرام إذا كان متاحًا
+                if (telegramUserId) {
+                    formData.telegramChatId = telegramUserId;
+                }
+
+                // إرسال البيانات إلى الخادم
+                const response = await fetch('/api/submit_kyc', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`خطأ في الاتصال: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // إغلاق مؤشر التحميل
+                    await Swal.close();
+
+                    // تحديث رقم الطلب وتاريخ التقديم
+                    document.getElementById('applicationId').textContent = data.application_id;
+                    document.getElementById('submissionDate').textContent = new Date().toLocaleDateString('en-US', {year: 'numeric', month: '2-digit', day: '2-digit'});
+                    
+                    // إخفاء جميع الخطوات وإظهار صفحة حالة الطلب
+                    document.querySelectorAll('.step-content').forEach(step => {
+                        step.classList.add('d-none');
+                    });
+                    document.getElementById('applicationStatus').classList.remove('d-none');
+
+                    // عرض رسالة نجاح
+                    await Swal.fire({
+                        title: 'تم بنجاح',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonText: 'حسناً'
+                    });
+                } else {
+                    throw new Error(data.message || 'حدث خطأ أثناء إرسال الطلب');
+                }
+            } catch (error) {
+                console.error('خطأ في إرسال النموذج:', error);
+                await Swal.fire({
+                    title: 'خطأ',
+                    text: error.message || 'حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.',
+                    icon: 'error',
+                    confirmButtonText: 'حسناً'
+                });
+            }
+        }
+
+        // دالة لتوليد رقم طلب مؤقت
+        function generateApplicationId() {
+            const timestamp = Date.now().toString();
+            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            return `APP-${timestamp.slice(-6)}${random}`;
+        }
+
+        // دالة لبدء طلب جديد
+        function startNewApplication() {
+            // إعادة تعيين النموذج
+            document.getElementById('kycForm').reset();
+            capturedImages = { id: null, selfie: null };
+            
+            // إعادة عرض الخطوة الأولى
+            showStep(1);
+        }
+
+        // تحديث مستمعي الأحداث
+        document.addEventListener('DOMContentLoaded', () => {
+            updateProgressBar();
+            
+            const inputs = document.querySelectorAll('input, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    this.classList.remove('is-invalid');
+                });
+            });
+        });
+
+        // دالة لعرض شروط الاستخدام
+        function showTermsAndConditions() {
+            Swal.fire({
+                title: 'الشروط والأحكام',
+                html: `
+                    <div class="terms-container" style="text-align: right; max-height: 300px; overflow-y: auto; padding: 10px; margin-bottom: 15px; border: 1px solid #e0e0e0; border-radius: 8px;">
+                        <h5 style="color: #2563eb; margin-bottom: 15px;">شروط وأحكام خدمة التحقق من الهوية</h5>
+                        <p>مرحباً بك في خدمة التحقق من الهوية (KYC) الخاصة بنا. يرجى قراءة الشروط والأحكام التالية بعناية قبل المتابعة:</p>
+                        
+                        <h6 style="color: #1e40af; margin-top: 15px;">1. جمع المعلومات والبيانات</h6>
+                        <p>- أنت توافق على تقديم معلومات دقيقة وصحيحة وحديثة عن هويتك.</p>
+                        <p>- سنقوم بجمع ومعالجة بياناتك الشخصية بما في ذلك الاسم والعنوان ورقم الهاتف وصور الهوية والصور الشخصية.</p>
+                        
+                        <h6 style="color: #1e40af; margin-top: 15px;">2. استخدام البيانات</h6>
+                        <p>- سيتم استخدام بياناتك للتحقق من هويتك وتلبية متطلبات الامتثال القانوني.</p>
+                        <p>- قد نشارك معلوماتك مع السلطات المختصة إذا طُلب منا ذلك بموجب القانون.</p>
+                        
+                        <h6 style="color: #1e40af; margin-top: 15px;">3. أمان البيانات</h6>
+                        <p>- نلتزم بحماية بياناتك الشخصية باستخدام تدابير أمنية مناسبة.</p>
+                        <p>- لن نبيع أو نؤجر معلوماتك الشخصية لأطراف ثالثة لأغراض تسويقية.</p>
+                        
+                        <h6 style="color: #1e40af; margin-top: 15px;">4. الاحتفاظ بالبيانات</h6>
+                        <p>- سنحتفظ ببياناتك طالما كان ذلك ضرورياً للأغراض التي تم جمعها من أجلها أو وفقاً لما يقتضيه القانون.</p>
+                        
+                        <h6 style="color: #1e40af; margin-top: 15px;">5. حقوقك</h6>
+                        <p>- لديك الحق في الوصول إلى بياناتك الشخصية وتصحيحها وحذفها، مع مراعاة القيود القانونية.</p>
+                    </div>
+                `,
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'أوافق وأرسل',
+                cancelButtonText: 'العودة',
+                confirmButtonColor: '#22c55e',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
+                focusConfirm: false,
+                customClass: {
+                    container: 'terms-modal-container',
+                    popup: 'terms-modal-popup',
+                    title: 'terms-modal-title',
+                    confirmButton: 'terms-modal-confirm',
+                    cancelButton: 'terms-modal-cancel'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // إظهار مؤشر التحميل
+                    Swal.fire({
+                        title: 'جاري إرسال الطلب',
+                        text: 'يرجى الانتظار...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // استدعاء دالة إرسال النموذج
+                    submitForm();
+                }
+            });
+        }
+        
+        // دالة لتحديث حالة الطلب
+        async function checkApplicationStatus() {
+            try {
+                const applicationId = document.getElementById('applicationId').textContent;
+                const response = await fetch(`/api/check_status/${applicationId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`خطأ في الاتصال: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // تحديث حالة الطلب
+                    const statusBadge = document.getElementById('statusBadge');
+                    if (statusBadge) {
+                        statusBadge.textContent = data.status;
+                        statusBadge.classList.remove('bg-warning', 'bg-danger', 'bg-success');
+                        if (data.status === 'مرفوض') {
+                            statusBadge.classList.add('bg-danger');
+                        } else if (data.status === 'مقبول') {
+                            statusBadge.classList.add('bg-success');
+                        } else {
+                            statusBadge.classList.add('bg-warning');
+                        }
+                    }
+                    
+                    // عرض رمز التسجيل إذا كان متاحًا
+                    if (data.registration_code) {
+                        const registrationCodeRow = document.getElementById('registrationCodeRow');
+                        const registrationCodeElement = document.getElementById('registrationCode');
+                        if (registrationCodeRow && registrationCodeElement) {
+                            registrationCodeRow.style.display = 'flex';
+                            registrationCodeElement.textContent = data.registration_code;
+                        }
+                    }
+                    
+                    // عرض سبب الرفض إذا كان الطلب مرفوضًا
+                    if (data.rejection_reason) {
+                        const rejectionReasonRow = document.getElementById('rejectionReasonRow');
+                        const rejectionReasonElement = document.getElementById('rejectionReason');
+                        if (rejectionReasonRow && rejectionReasonElement) {
+                            rejectionReasonRow.style.display = 'flex';
+                            rejectionReasonElement.textContent = data.rejection_reason;
+                        }
+                    }
+                    
+                    // عرض رسالة نجاح
+                    await Swal.fire({
+                        title: 'تم التحديث',
+                        text: 'تم تحديث حالة الطلب بنجاح.',
+                        icon: 'success',
+                        confirmButtonText: 'حسناً'
+                    });
+                } else {
+                    throw new Error(data.message || 'حدث خطأ أثناء تحديث حالة الطلب');
+                }
+            } catch (error) {
+                console.error('خطأ في تحديث حالة الطلب:', error);
+                await Swal.fire({
+                    title: 'خطأ',
+                    text: error.message || 'حدث خطأ أثناء تحديث حالة الطلب. يرجى المحاولة مرة أخرى.',
+                    icon: 'error',
+                    confirmButtonText: 'حسناً'
+                });
+            }
+        }
+    </script>
+</body>
+</html>
