@@ -1,4 +1,0 @@
-2025-02-28 19:26:09,494 - root - INFO - [Telegram Bot] result = await self._request_wrapper(
-2025-02-28 19:26:09,500 - root - INFO - [Telegram Bot] File "C:\Python310\lib\site-packages\telegram\request\_baserequest.py", line 381, in _request_wrapper
-2025-02-28 19:26:09,501 - root - INFO - [Telegram Bot] raise Conflict(message)
-2025-02-28 19:26:09,501 - root - INFO - [Telegram Bot] telegram.error.Conflict: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
