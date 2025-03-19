@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}الرئيسية{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">لوحة المعلومات</h2>
+        <button class="btn btn-outline-primary" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise"></i>
+            تحديث
+        </button>
+    </div>
+    
+    <!-- إحصائيات سريعة -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">إجمالي العمليات</h6>
+                    <h2 class="card-text">{{ stats.total_withdrawals or 0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">العمليات المكتملة</h6>
+                    <h2 class="card-text">{{ stats.completed_withdrawals or 0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="card-title">العمليات المعلقة</h6>
+                    <h2 class="card-text">{{ stats.pending_withdrawals or 0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="card-title">العمليات الفاشلة</h6>
+                    <h2 class="card-text">{{ stats.failed_withdrawals or 0 }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- المبالغ الإجمالية -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">إجمالي المبالغ المكتملة (USD)</h6>
+                    <h2 class="card-text">${{ "%.2f"|format(amounts.total_completed_usd or 0) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">إجمالي المبالغ المعلقة (USD)</h6>
+                    <h2 class="card-text">${{ "%.2f"|format(amounts.total_pending_usd or 0) }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- أسعار الصرف -->
+<div class="card mb-4">
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3">
+        <h5 class="mb-0">
+            <i class="bi bi-currency-exchange me-2"></i>
+            أسعار الصرف الحالية
+        </h5>
+        <span class="text-muted small">
+            آخر تحديث:
+            {% if exchange_rates %}
+                {{ exchange_rates[0]['updated_at'].strftime('%Y-%m-%d %H:%M') }}
+            {% endif %}
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+            {% for rate in exchange_rates %}
+            <div class="col">
+                <div class="border rounded p-3 h-100 bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">{{ rate['currency_code'] }}</h6>
+                            <small class="text-muted">مقابل USDT</small>
+                        </div>
+                        <h5 class="mb-0 text-primary">
+                            {{ "%.4f"|format(rate['rate']) }}
+                        </h5>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12">
+                <div class="text-center py-4">
+                    <i class="bi bi-exclamation-circle text-warning h4 d-block mb-2"></i>
+                    لا توجد أسعار صرف متاحة
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+    <!-- آخر العمليات -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">آخر العمليات</h5>
+            <a href="{{ url_for('withdrawals') }}" class="btn btn-primary btn-sm">عرض الكل</a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>معرف العملية</th>
+                            <th>المستخدم</th>
+                            <th>المبلغ</th>
+                            <th>العملة</th>
+                            <th>الحالة</th>
+                            <th>التاريخ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for withdrawal in withdrawals %}
+                        <tr>
+                            <td>{{ withdrawal.withdrawal_id }}</td>
+                            <td>{{ withdrawal.user_id }}</td>
+                            <td>{{ "%.2f"|format(withdrawal.crypto_amount) }}</td>
+                            <td>{{ withdrawal.crypto_currency }}</td>
+                            <td>
+                                <span class="badge {% if withdrawal.status == 'completed' %}bg-success
+                                           {% elif withdrawal.status == 'pending' %}bg-warning
+                                           {% else %}bg-danger{% endif %}">
+                                    {{ withdrawal.status }}
+                                </span>
+                            </td>
+                            <td>{{ withdrawal.created_at.strftime('%Y-%m-%d %H:%M') if withdrawal.created_at else '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="bi bi-inbox h4 d-block mb-2"></i>
+                                لا توجد عمليات حتى الآن
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // تحديث الصفحة كل دقيقة
+    setTimeout(function() {
+        location.reload();
+    }, 60000);
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إرسال رسالة مخصصة</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .custom-card {
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .preview-image {
+            max-width: 100px;
+            max-height: 100px;
+            margin: 5px;
+        }
+        #preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .preview-item {
+            position: relative;
+            display: inline-block;
+        }
+        .remove-preview {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: red;
+            color: white;
+            border-radius: 50%;
+            padding: 0 6px;
+            cursor: pointer;
+        }
+        
+        .list-group-item {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .list-group-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .list-group-item.search-result {
+            animation: highlight 1s ease-out;
+        }
+        
+        @keyframes highlight {
+            0% { background-color: #e3f2fd; }
+            100% { background-color: transparent; }
+        }
+        
+        .user-info {
+            min-width: 0;
+        }
+        
+        .user-name {
+            font-weight: 500;
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .list-group-item {
+            padding: 0.75rem 1rem;
+        }
+        
+        .list-group-item small {
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+        
+        .list-group-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .list-group-item.active {
+            background-color: #e3f2fd;
+            border-color: #90caf9;
+            color: #0d47a1;
+        }
+        
+        .form-check-input:checked {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        
+        .search-result {
+            animation: highlight-search 1s ease-out;
+        }
+        
+        @keyframes highlight-search {
+            0% { background-color: #fff3cd; }
+            100% { background-color: transparent; }
+        }
+        
+        #userList {
+            scrollbar-width: thin;
+            scrollbar-color: #6c757d #f8f9fa;
+        }
+        
+        #userList::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #userList::-webkit-scrollbar-track {
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        #userList::-webkit-scrollbar-thumb {
+            background-color: #6c757d;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card custom-card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">إرسال رسالة مخصصة</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="messageForm">
+                            <div class="mb-3">
+                                <label class="form-label">اختر المستخدمين</label>
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control" id="userSearch" placeholder="ابحث عن مستخدم...">
+                                    <button class="btn btn-outline-primary" type="button" id="selectAllBtn">
+                                        <i class="bi bi-check-all"></i> تحديد الكل
+                                    </button>
+                                    <button class="btn btn-outline-secondary" type="button" id="clearSelectionBtn">
+                                        <i class="bi bi-x-lg"></i> إلغاء التحديد
+                                    </button>
+                                </div>
+                                <div class="btn-group w-100 mb-2">
+                                    <button type="button" class="btn btn-outline-primary active" id="allUsersFilterBtn">
+                                        <i class="bi bi-people-fill"></i> جميع المستخدمين
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="activeUsersFilterBtn">
+                                        <i class="bi bi-person-check-fill"></i> المستخدمين النشطين
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="recentUsersFilterBtn">
+                                        <i class="bi bi-clock-history"></i> آخر 24 ساعة
+                                    </button>
+                                </div>
+                                
+                                <div class="card">
+                                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                        <span>قائمة المستخدمين</span>
+                                        <div>
+                                            <span class="badge bg-primary" id="selectedCount">0 محدد</span>
+                                            <span class="badge bg-secondary ms-1" id="totalCount">0 إجمالي</span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <div class="list-group list-group-flush" id="userList" style="max-height: 300px; overflow-y: auto;">
+                                            <label class="list-group-item">
+                                                <input class="form-check-input me-2" type="checkbox" value="all">
+                                                إرسال للجميع
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-text mt-2">
+                                    <i class="bi bi-info-circle"></i>
+                                    يمكنك تحديد عدة مستخدمين في نفس الوقت
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="messageText" class="form-label">نص الرسالة</label>
+                                <textarea class="form-control" id="messageText" rows="4" required></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="enableScheduling">
+                                    <label class="form-check-label" for="enableScheduling">
+                                        جدولة الرسالة
+                                    </label>
+                                </div>
+                                <div id="schedulingOptions" class="d-none">
+                                    <label for="scheduleDateTime" class="form-label">موعد إرسال الرسالة (بتوقيت السعودية)</label>
+                                    <input type="datetime-local" class="form-control" id="scheduleDateTime">
+                                    <div class="form-text">
+                                        <i class="bi bi-info-circle"></i>
+                                        التوقيت بتوقيت المملكة العربية السعودية (GMT+3)
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="attachments" class="form-label">المرفقات</label>
+                                <input type="file" class="form-control" id="attachments" multiple>
+                                <div id="preview" class="mt-2"></div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary" id="sendBtn">
+                                    <i class="bi bi-send"></i> إرسال الرسالة
+                                </button>
+                                <a href="/" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-return-right"></i> العودة للوحة التحكم
+                                </a>
+                            </div>
+                            
+                            <!-- رسائل النجاح والخطأ -->
+                            <div class="alert alert-success mt-3 d-none" id="successAlert">
+                                <i class="bi bi-check-circle-fill"></i> تم إرسال الرسالة بنجاح
+                            </div>
+                            <div class="alert alert-danger mt-3 d-none" id="errorAlert">
+                                <i class="bi bi-exclamation-triangle-fill"></i> <span id="errorText"></span>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <script>
+        // تهيئة خيارات الجدولة
+        document.getElementById('enableScheduling').addEventListener('change', function() {
+            const schedulingOptions = document.getElementById('schedulingOptions');
+            schedulingOptions.classList.toggle('d-none', !this.checked);
+            
+            if (this.checked) {
+                // تعيين الحد الأدنى للتاريخ والوقت إلى الوقت الحالي
+                const now = luxon.DateTime.now().setZone('Asia/Riyadh');
+                const minDateTime = now.toFormat("yyyy-MM-dd'T'HH:mm");
+                document.getElementById('scheduleDateTime').min = minDateTime;
+                
+                // تعيين القيمة الافتراضية إلى بعد ساعة من الآن
+                const defaultDateTime = now.plus({ hours: 1 }).toFormat("yyyy-MM-dd'T'HH:mm");
+                document.getElementById('scheduleDateTime').value = defaultDateTime;
+            }
+        });
+
+        let allUsers = [];
+        let filteredUsers = [];
+        
+        // تحديث عداد المستخدمين المحددين
+        function updateSelectedCount() {
+            const selectedCount = document.querySelectorAll('#userList input[type="checkbox"]:checked').length;
+            const totalCount = filteredUsers.length;
+            
+            document.getElementById('selectedCount').textContent = `${selectedCount} محدد`;
+            document.getElementById('totalCount').textContent = `${totalCount} إجمالي`;
+        }
+        
+        // إنشاء عنصر مستخدم في القائمة
+        function createUserElement(user) {
+            const label = document.createElement('label');
+            label.className = 'list-group-item';
+            label.innerHTML = `
+                <input class="form-check-input me-2" type="checkbox" value="${user.id}">
+                ${user.name} (${user.id})
+            `;
+            
+            // تحديث العداد عند تغيير حالة الاختيار
+            label.querySelector('input').addEventListener('change', function() {
+                // إلغاء تحديد "إرسال للجميع" إذا تم إلغاء تحديد أي مستخدم
+                if (!this.checked) {
+                    document.querySelector('#userList input[value="all"]').checked = false;
+                }
+                updateSelectedCount();
+            });
+            
+            return label;
+        }
+        
+        // تخزين حالة تحديد المستخدمين
+        let selectedUserIds = new Set();
+        let lastSearchText = '';
+        
+        // تحديث إحصائيات المستخدمين
+        function updateUserStats(users) {
+    // التحقق من وجود العناصر قبل استخدامها
+    const activeUsersCountElement = document.getElementById('activeUsersCount');
+    const totalTransactionsElement = document.getElementById('totalTransactions');
+    const lastActivityElement = document.getElementById('lastActivity');
+    
+    if (!activeUsersCountElement || !totalTransactionsElement || !lastActivityElement) {
+        console.warn('بعض عناصر إحصائيات المستخدمين غير موجودة في الصفحة');
+        return; // الخروج من الدالة إذا كانت العناصر غير موجودة
+    }
+    
+    const now = new Date();
+    const last24Hours = new Date(now - 24 * 60 * 60 * 1000);
+    
+    const activeUsers = users.filter(user => user.withdrawal_count > 0);
+    const recentUsers = users.filter(user => {
+        if (!user.last_activity) return false;
+        const activityDate = new Date(user.last_activity);
+        return activityDate > last24Hours;
+    });
+    
+    const totalTransactions = users.reduce((sum, user) => sum + (user.withdrawal_count || 0), 0);
+    const lastActiveUser = users
+        .filter(user => user.last_activity)
+        .sort((a, b) => new Date(b.last_activity) - new Date(a.last_activity))[0];
+        
+    activeUsersCountElement.textContent = activeUsers.length;
+    totalTransactionsElement.textContent = totalTransactions;
+    lastActivityElement.textContent = lastActiveUser
+        ? new Date(lastActiveUser.last_activity).toLocaleString('ar-SA', {
+            month: 'numeric',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        })
+        : '-';
+}
+        
+        // تصفية المستخدمين حسب النشاط
+        function filterUsersByActivity(users, filter = 'all') {
+            const now = new Date();
+            const last24Hours = new Date(now - 24 * 60 * 60 * 1000);
+            
+            switch (filter) {
+                case 'active':
+                    return users.filter(user => user.withdrawal_count > 0);
+                case 'recent':
+                    return users.filter(user => {
+                        if (!user.last_activity) return false;
+                        const activityDate = new Date(user.last_activity);
+                        return activityDate > last24Hours;
+                    });
+                default:
+                    return users;
+            }
+        }
+        
+        // تحديث قائمة المستخدمين المعروضة
+        function updateUserList(searchText = '', activityFilter = 'all') {
+            const userList = document.getElementById('userList');
+            
+            // حفظ حالة "إرسال للجميع"
+            const wasAllChecked = userList.querySelector('input[value="all"]')?.checked || false;
+            
+            // تحديث نص البحث
+            lastSearchText = searchText.toLowerCase();
+            
+            // تصفية المستخدمين حسب نص البحث
+            filteredUsers = allUsers.filter(user => {
+                const searchTerms = lastSearchText.split(/\s+/).filter(term => term.length > 0);
+                if (searchTerms.length === 0) return true;
+                
+                const userData = (
+                    user.name.toLowerCase() + ' ' + 
+                    user.id.toString() + ' ' +
+                    'مستخدم ' + user.id.toString()
+                ).toLowerCase();
+                
+                return searchTerms.every(term => userData.includes(term));
+            });
+            
+            // إعادة إنشاء القائمة
+            userList.innerHTML = '';
+            
+            // إضافة خيار "إرسال للجميع"
+            const allLabel = document.createElement('label');
+            allLabel.className = 'list-group-item';
+            allLabel.innerHTML = `
+                <input class="form-check-input me-2" type="checkbox" value="all" ${wasAllChecked ? 'checked' : ''}>
+                <span class="user-name">إرسال للجميع</span>
+            `;
+            userList.appendChild(allLabel);
+            
+            // إضافة المستخدمين المصفاة
+            filteredUsers.forEach(user => {
+                const label = document.createElement('label');
+                label.className = 'list-group-item';
+                if (searchText) {
+                    label.classList.add('search-result');
+                }
+                
+                const isSelected = selectedUserIds.has(user.id.toString());
+                
+                // تنسيق تاريخ آخر نشاط
+                const lastActivity = user.last_activity 
+                    ? new Date(user.last_activity).toLocaleString('ar-SA', {
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                    : 'لا يوجد نشاط';
+
+                label.innerHTML = `
+                    <div class="d-flex align-items-center w-100">
+                        <input class="form-check-input me-2" type="checkbox" value="${user.id}" ${isSelected ? 'checked' : ''}>
+                        <div class="user-info flex-grow-1">
+                            <div class="user-name">${user.name}</div>
+                            <small class="text-muted">
+                                آخر نشاط: ${lastActivity}
+                                ${user.withdrawal_count ? `• ${user.withdrawal_count} عملية` : ''}
+                            </small>
+                        </div>
+                    </div>
+                `;
+                
+                // إضافة مستمع الحدث لخانة الاختيار
+                const checkbox = label.querySelector('input');
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        selectedUserIds.add(this.value);
+                    } else {
+                        selectedUserIds.delete(this.value);
+                        // إلغاء تحديد "إرسال للجميع" إذا تم إلغاء تحديد أي مستخدم
+                        document.querySelector('#userList input[value="all"]').checked = false;
+                    }
+                    updateSelectedCount();
+                });
+                
+                userList.appendChild(label);
+            });
+            
+            // إضافة مستمع الحدث لخيار "إرسال للجميع"
+            allLabel.querySelector('input').addEventListener('change', function() {
+                const checkboxes = userList.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                    if (this.checked) {
+                        if (cb.value !== 'all') {
+                            selectedUserIds.add(cb.value);
+                        }
+                    } else {
+                        selectedUserIds.clear();
+                    }
+                });
+                updateSelectedCount();
+            });
+            
+            // إضافة رسالة إذا لم يتم العثور على نتائج
+            if (searchText && filteredUsers.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.className = 'list-group-item text-center text-muted';
+                noResults.textContent = 'لم يتم العثور على نتائج';
+                userList.appendChild(noResults);
+            }
+            
+            // تحديث العداد
+            updateSelectedCount();
+        }
+        
+        // تحديث حالة أزرار التصفية
+        function updateFilterButtons(activeFilter) {
+            const buttons = {
+                'all': document.getElementById('allUsersFilterBtn'),
+                'active': document.getElementById('activeUsersFilterBtn'),
+                'recent': document.getElementById('recentUsersFilterBtn')
+            };
+            
+            Object.keys(buttons).forEach(filter => {
+                if (filter === activeFilter) {
+                    buttons[filter].classList.add('active');
+                } else {
+                    buttons[filter].classList.remove('active');
+                }
+            });
+        }
+        
+        // إضافة مستمعي الأحداث لأزرار التصفية
+        document.getElementById('allUsersFilterBtn').addEventListener('click', function() {
+            updateFilterButtons('all');
+            updateUserList(lastSearchText, 'all');
+        });
+        
+        document.getElementById('activeUsersFilterBtn').addEventListener('click', function() {
+            updateFilterButtons('active');
+            updateUserList(lastSearchText, 'active');
+        });
+        
+        document.getElementById('recentUsersFilterBtn').addEventListener('click', function() {
+            updateFilterButtons('recent');
+            updateUserList(lastSearchText, 'recent');
+        });
+        
+        // تحميل قائمة المستخدمين
+        fetch('/api/get_users')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(users => {
+                console.log('Received users:', users);
+                allUsers = users;
+                
+                if (users.length === 0) {
+                    console.log('No users found!');
+                    const userList = document.getElementById('userList');
+                    userList.innerHTML = `
+                        <div class="list-group-item text-center text-muted">
+                            <i class="bi bi-people"></i>
+                            لم يتم العثور على أي مستخدمين
+                        </div>
+                    `;
+                } else {
+                    console.log('Updating user list with', users.length, 'users');
+                    updateUserStats(users);
+                    updateUserList(lastSearchText, 'all');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading users:', error);
+                const userList = document.getElementById('userList');
+                userList.innerHTML = `
+                    <div class="list-group-item text-center text-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        حدث خطأ أثناء تحميل قائمة المستخدمين
+                    </div>
+                `;
+            });
+            
+        // البحث في المستخدمين
+        document.getElementById('userSearch').addEventListener('input', function(e) {
+            updateUserList(e.target.value);
+        });
+        
+        // زر تحديد الكل
+        document.getElementById('selectAllBtn').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('#userList input[type="checkbox"]');
+            const visibleCheckboxes = Array.from(checkboxes).filter(cb => 
+                cb.closest('.list-group-item').style.display !== 'none'
+            );
+            const allChecked = visibleCheckboxes.every(cb => cb.checked);
+            visibleCheckboxes.forEach(cb => cb.checked = !allChecked);
+            updateSelectedCount();
+        });
+        
+        // زر إلغاء التحديد
+        document.getElementById('clearSelectionBtn').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('#userList input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            updateSelectedCount();
+        });
+
+        // معاينة الملفات المرفقة
+        document.getElementById('attachments').addEventListener('change', function(e) {
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+            
+            [...e.target.files].forEach((file, index) => {
+                const div = document.createElement('div');
+                div.className = 'preview-item';
+                
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.className = 'preview-image';
+                    div.appendChild(img);
+                } else {
+                    const icon = document.createElement('div');
+                    icon.className = 'file-icon';
+                    icon.innerHTML = `<i class="bi bi-file-earmark-text" style="font-size: 48px;"></i><br>${file.name}`;
+                    div.appendChild(icon);
+                }
+
+                const removeBtn = document.createElement('span');
+                removeBtn.className = 'remove-preview';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = () => {
+                    div.remove();
+                    // إزالة الملف من input
+                    const dt = new DataTransfer();
+                    const input = document.getElementById('attachments');
+                    const { files } = input;
+                    
+                    for (let i = 0; i < files.length; i++) {
+                        if (i !== index) dt.items.add(files[i]);
+                    }
+                    
+                    input.files = dt.files;
+                };
+                
+                div.appendChild(removeBtn);
+                preview.appendChild(div);
+            });
+        });
+
+        // إظهار رسالة نجاح أو خطأ
+        function showAlert(isSuccess, message) {
+            const successAlert = document.getElementById('successAlert');
+            const errorAlert = document.getElementById('errorAlert');
+            const errorText = document.getElementById('errorText');
+            
+            successAlert.classList.add('d-none');
+            errorAlert.classList.add('d-none');
+            
+            if (isSuccess) {
+                successAlert.classList.remove('d-none');
+            } else {
+                errorText.textContent = message;
+                errorAlert.classList.remove('d-none');
+            }
+            
+            // إخفاء الرسالة بعد 5 ثواني
+            setTimeout(() => {
+                if (isSuccess) {
+                    successAlert.classList.add('d-none');
+                } else {
+                    errorAlert.classList.add('d-none');
+                }
+            }, 5000);
+        }
+        
+        // إرسال النموذج
+        document.getElementById('messageForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const sendBtn = document.getElementById('sendBtn');
+            const originalBtnText = sendBtn.innerHTML;
+            
+            // جمع المستخدمين المحددين
+            const selectedCheckboxes = document.querySelectorAll('#userList input[type="checkbox"]:checked');
+            const selectedIds = Array.from(selectedCheckboxes)
+                .filter(cb => cb.value !== 'all')
+                .map(cb => cb.value);
+            
+            const isAllSelected = Array.from(selectedCheckboxes)
+                .some(cb => cb.value === 'all');
+                
+            if (!isAllSelected && selectedIds.length === 0) {
+                showAlert(false, 'يرجى اختيار مستخدم واحد على الأقل');
+                return;
+            }
+            
+            // التحقق من إدخال رسالة
+            const message = document.getElementById('messageText').value.trim();
+            if (!message) {
+                showAlert(false, 'يرجى كتابة رسالة');
+                return;
+            }
+
+            // التحقق من الجدولة
+            const isScheduled = document.getElementById('enableScheduling').checked;
+            if (isScheduled) {
+                const scheduledDateTime = document.getElementById('scheduleDateTime').value;
+                if (!scheduledDateTime) {
+                    showAlert(false, 'الرجاء تحديد موعد إرسال الرسالة');
+                    return;
+                }
+
+                // التحقق من أن الموعد المحدد في المستقبل
+                const now = luxon.DateTime.now().setZone('Asia/Riyadh');
+                const scheduledTime = luxon.DateTime.fromISO(scheduledDateTime, { zone: 'Asia/Riyadh' });
+                
+                if (scheduledTime <= now) {
+                    showAlert(false, 'يجب أن يكون موعد الإرسال في المستقبل');
+                    return;
+                }
+            }
+            
+            // تجهيز البيانات
+            const formData = new FormData();
+            
+            // إضافة المستخدمين المحددين
+            if (isAllSelected) {
+                formData.append('user_ids[]', 'all');
+            } else {
+                selectedIds.forEach(id => formData.append('user_ids[]', id));
+            }
+            
+            formData.append('message', message);
+
+            // إضافة معلومات الجدولة
+            if (isScheduled) {
+                const scheduledDateTime = document.getElementById('scheduleDateTime').value;
+                formData.append('is_scheduled', '1');
+                formData.append('scheduled_time', scheduledDateTime);
+            }
+            
+            // إضافة الملفات
+            const files = document.getElementById('attachments').files;
+            for (let file of files) {
+                formData.append('files[]', file);
+            }
+
+            try {
+                // تغيير نص الزر وتعطيله
+                sendBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> جاري الإرسال...';
+                sendBtn.disabled = true;
+                
+                // إرسال الطلب
+                const response = await fetch('/api/send_custom_message', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const isScheduled = document.getElementById('enableScheduling').checked;
+                    if (isScheduled) {
+                        const scheduledTime = luxon.DateTime.fromISO(document.getElementById('scheduleDateTime').value, { zone: 'Asia/Riyadh' });
+                        const formattedTime = scheduledTime.toLocaleString(luxon.DateTime.DATETIME_FULL_WITH_SECONDS);
+                        showAlert(true, `تمت جدولة الرسالة للإرسال في ${formattedTime}`);
+                    } else {
+                        showAlert(true, 'تم إرسال الرسالة بنجاح');
+                    }
+                    this.reset();
+                    document.getElementById('preview').innerHTML = '';
+                    document.getElementById('schedulingOptions').classList.add('d-none');
+                } else {
+                    showAlert(false, result.error || 'حدث خطأ أثناء إرسال الرسالة');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert(false, 'حدث خطأ في الاتصال بالخادم');
+            } finally {
+                // إعادة الزر لحالته الأصلية
+                sendBtn.innerHTML = originalBtnText;
+                sendBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

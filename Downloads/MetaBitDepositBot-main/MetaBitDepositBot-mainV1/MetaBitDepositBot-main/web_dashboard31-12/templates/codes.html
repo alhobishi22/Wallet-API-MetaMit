@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}الأكواد المسجلة{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">الأكواد المسجلة</h2>
+        <div class="input-group" style="width: 300px;">
+            <input type="text" class="form-control" id="searchInput" placeholder="بحث...">
+            <button class="btn btn-outline-secondary">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">أكواد التسجيل</h3>
+            <div class="card-tools">
+                <a href="{{ url_for('export_codes') }}" class="btn btn-success">
+                    <i class="fas fa-file-excel"></i> تصدير إلى Excel
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>الكود</th>
+                            <th>معرف المستخدم</th>
+                            <th>الحالة</th>
+                            <th>عدد العمليات</th>
+                            <th>إجمالي المبالغ (USD)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for code in codes %}
+                        <tr>
+                            <td>{{ code['code'] }}</td>
+                            <td>{{ code['user_id'] if code['user_id'] else 'غير مستخدم' }}</td>
+                            <td>
+                                <span class="badge {% if code['is_used'] %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ 'مستخدم' if code['is_used'] else 'غير مستخدم' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if code['transactions_count'] > 0 %}
+                                    <a href="#" class="btn btn-link" data-bs-toggle="modal" data-bs-target="#transactionsModal" 
+                                       onclick="loadTransactions('{{ code['code'] }}', '{{ code['user_id'] }}')">
+                                        {{ code['transactions_count'] }}
+                                    </a>
+                                {% else %}
+                                    {{ code['transactions_count'] }}
+                                {% endif %}
+                            </td>
+                            <td>${{ "%.2f"|format(code['total_amount_usd']) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <i class="bi bi-inbox h4 d-block mb-2"></i>
+                                لا توجد أكواد مسجلة حتى الآن
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="transactionsModal" tabindex="-1" aria-labelledby="transactionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="transactionsModalLabel">تفاصيل العمليات</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>رقم العملية</th>
+                                <th>التاريخ</th>
+                                <th>المبلغ المحلي</th>
+                                <th>العملة المحلية</th>
+                                <th>المبلغ (USD)</th>
+                                <th>العملة المشفرة</th>
+                                <th>الشبكة</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">جاري التحميل...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const tableRows = document.querySelectorAll('tbody tr');
+
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            
+            tableRows.forEach(row => {
+                if (row.cells.length === 1) return;
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+    });
+
+    function loadTransactions(code, userId) {
+        const tableBody = document.getElementById('transactionsTableBody');
+        const modalTitle = document.getElementById('transactionsModalLabel');
+        
+        // تحديث عنوان النافذة
+        modalTitle.textContent = `تفاصيل العمليات - ${code}`;
+        
+        // عرض مؤشر التحميل
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">جاري التحميل...</span>
+                    </div>
+                    <div class="mt-2">جاري تحميل البيانات...</div>
+                </td>
+            </tr>
+        `;
+        
+        // جلب البيانات من الخادم
+        fetch(`/api/code_transactions/${userId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.transactions || data.transactions.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="bi bi-inbox h4 d-block mb-2"></i>
+                                لا توجد عمليات لهذا الكود
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                // تحديث عنوان النافذة مع إضافة إحصائيات
+                modalTitle.textContent = `تفاصيل العمليات - ${data.code} (${data.total_count} عملية - $${data.total_amount.toLocaleString()})`;
+                
+                // عرض العمليات
+                tableBody.innerHTML = data.transactions.map(transaction => `
+                    <tr>
+                        <td>${transaction.withdrawal_id}</td>
+                        <td>${new Date(transaction.created_at).toLocaleString('ar-SA')}</td>
+                        <td>${transaction.local_amount.toLocaleString()} ${transaction.local_currency}</td>
+                        <td>${transaction.local_currency_name || transaction.local_currency}</td>
+                        <td>$${transaction.crypto_amount.toLocaleString()}</td>
+                        <td>${transaction.crypto_currency}</td>
+                        <td>${transaction.network_name || '-'}</td>
+                        <td>
+                            <span class="badge bg-${getStatusColor(transaction.status)}">
+                                ${getStatusText(transaction.status)}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <i class="bi bi-exclamation-triangle h4 d-block mb-2"></i>
+                            <div class="text-danger">حدث خطأ أثناء تحميل البيانات</div>
+                            <div class="small text-muted mt-2">يرجى المحاولة مرة أخرى</div>
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+
+    function getStatusColor(status) {
+        switch (status) {
+            case 'completed': return 'success';
+            case 'pending': return 'warning';
+            case 'failed': return 'danger';
+            case 'cancelled': return 'secondary';
+            default: return 'info';
+        }
+    }
+
+    function getStatusText(status) {
+        switch (status) {
+            case 'completed': return 'مكتمل';
+            case 'pending': return 'قيد المعالجة';
+            case 'failed': return 'فشل';
+            case 'cancelled': return 'ملغي';
+            default: return status;
+        }
+    }
+
+    // تحديث تلقائي كل دقيقة
+    setInterval(function() {
+        location.reload();
+    }, 60000);
+</script>
+{% endblock %}
+{% endblock %}
