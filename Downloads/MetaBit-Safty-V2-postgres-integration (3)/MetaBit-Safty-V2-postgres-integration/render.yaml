@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: metabit-safety
+    env: python
+    buildCommand: ./build.sh
+    startCommand: ./start.sh
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: postgresql://metabit_safty_db_user:i7jQbcMMM2sg7k12PwweDO1koIUd3ppF@dpg-cvc9e8bv2p9s73ad9g5g-a.singapore-postgres.render.com/metabit_safty_db
+      - key: PORT
+        value: 10000
+      - key: TELEGRAM_BOT_TOKEN
+        value: 8093639537:AAEGVJfZi1hFkv-iSiJWruGB2SYssfYJfvY
+      - key: WEB_CONCURRENCY
+        value: 2
+      - key: SQLALCHEMY_TRACK_MODIFICATIONS
+        value: false
+      - key: FLASK_APP
+        value: app.py
+
+databases:
+  - name: metabit-safety-db
+    databaseName: metabit_safety
+    user: metabit_safety_user
+    plan: free

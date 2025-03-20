@@ -1,0 +1,98 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="fas fa-users me-2"></i>إدارة المستخدمين</h2>
+        <div>
+            <a href="{{ url_for('admin_add_user') }}" class="btn btn-success">
+                <i class="fas fa-user-plus me-2"></i>إضافة مستخدم جديد
+            </a>
+            <span class="badge bg-primary fs-5 ms-2">{{ users|length }} مستخدم</span>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-primary bg-gradient text-white">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>قائمة المستخدمين</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">اسم المستخدم</th>
+                            <th scope="col">البريد الإلكتروني</th>
+                            <th scope="col">عدد البلاغات</th>
+                            <th scope="col">الصلاحيات</th>
+                            <th scope="col">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <th scope="row">{{ user.id }}</th>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ user.reports|length }}</span>
+                            </td>
+                            <td>
+                                {% if user.is_admin %}
+                                <span class="badge bg-success">مشرف</span>
+                                {% else %}
+                                <span class="badge bg-secondary">مستخدم</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    {% if user.id != current_user.id %}
+                                    <form action="{{ url_for('toggle_admin', id=user.id) }}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm {% if user.is_admin %}btn-warning{% else %}btn-success{% endif %}" title="{% if user.is_admin %}إلغاء صلاحيات المشرف{% else %}منح صلاحيات المشرف{% endif %}">
+                                            <i class="fas {% if user.is_admin %}fa-user-minus{% else %}fa-user-shield{% endif %}"></i>
+                                        </button>
+                                    </form>
+                                    
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteUserModal{{ user.id }}" title="حذف المستخدم">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                    {% else %}
+                                    <span class="badge bg-primary">الحساب الحالي</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Delete User Modal -->
+                                <div class="modal fade" id="deleteUserModal{{ user.id }}" tabindex="-1" aria-labelledby="deleteUserModalLabel{{ user.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title" id="deleteUserModalLabel{{ user.id }}">تأكيد حذف المستخدم</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>هل أنت متأكد من حذف المستخدم <strong>{{ user.username }}</strong>؟</p>
+                                                <div class="alert alert-warning">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                                    سيتم حذف جميع البلاغات المرتبطة بهذا المستخدم ({{ user.reports|length }} بلاغ).
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                                <form action="{{ url_for('delete_user', id=user.id) }}" method="post">
+                                                    <button type="submit" class="btn btn-danger">تأكيد الحذف</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 d-md-block bg-white shadow-sm sidebar">
+            <div class="position-sticky pt-3">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary bg-gradient text-white">
+                        <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>لوحة التحكم</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.path == '/admin' %}active bg-light{% endif %}" href="{{ url_for('admin_dashboard') }}">
+                                    <i class="fas fa-chart-line me-2"></i>
+                                    الإحصائيات
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.path == '/admin/users' %}active bg-light{% endif %}" href="{{ url_for('admin_users') }}">
+                                    <i class="fas fa-users me-2"></i>
+                                    إدارة المستخدمين
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.path == '/admin/reports' %}active bg-light{% endif %}" href="{{ url_for('admin_reports') }}">
+                                    <i class="fas fa-flag me-2"></i>
+                                    إدارة البلاغات
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('index') }}">
+                                    <i class="fas fa-home me-2"></i>
+                                    العودة للموقع
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 ms-sm-auto px-md-4">
+            {% block admin_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="fas fa-file-import me-2"></i>استيراد البلاغات من ملف إكسل</h2>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-1"></i> العودة للوحة التحكم
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- تعليمات الاستيراد - كارد منفصل وبارز -->
+        <div class="col-md-8 mx-auto mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info bg-gradient text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>تعليمات الاستيراد</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">الأعمدة المطلوبة:</h6>
+                            <ul class="mb-3">
+                                <li><strong>النوع</strong> - يجب أن تكون القيمة "نصاب" أو "مديونية"</li>
+                                <li><strong>اسم النصاب</strong> - اسم الشخص المبلغ عنه</li>
+                                <li><strong>رقم الهاتف</strong> - رقم هاتف الشخص المبلغ عنه</li>
+                                <li><strong>الوصف</strong> - وصف البلاغ</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">الأعمدة الاختيارية:</h6>
+                            <ul class="mb-0">
+                                <li><strong>المحفظة</strong> - عنوان المحفظة</li>
+                                <li><strong>الشبكة</strong> - نوع الشبكة</li>
+                                <li><strong>PayPal, Payer, Perfect Money</strong></li>
+                                <li><strong>بنك الكريمي, محفظة جيب, محفظة جوالي, محفظة كاش, ون كاش</strong></li>
+                                <li><strong>قيمة المديونية</strong> (للمديونية فقط)</li>
+                                <li><strong>تاريخ المديونية</strong> (للمديونية فقط)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>ملاحظة هامة:</strong> يجب أن تكون أسماء الأعمدة مطابقة تمامًا لما هو مذكور أعلاه.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- نموذج رفع الملف -->
+        <div class="col-md-8 mx-auto">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary bg-gradient text-white">
+                    <h5 class="mb-0"><i class="fas fa-upload me-2"></i>رفع ملف الإكسل</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <label for="excel_file" class="form-label">اختر ملف الإكسل</label>
+                            <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
+                            <div class="form-text">يجب أن يكون الملف بصيغة Excel (.xlsx أو .xls)</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-file-import me-2"></i>استيراد البلاغات
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-success bg-gradient text-white">
+                    <h5 class="mb-0"><i class="fas fa-download me-2"></i>تنزيل قالب</h5>
+                </div>
+                <div class="card-body">
+                    <p>يمكنك تنزيل قالب ملف الإكسل لاستخدامه في إعداد البيانات للاستيراد:</p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('export_reports_excel') }}" class="btn btn-success">
+                            <i class="fas fa-file-excel me-2"></i>تنزيل قالب الإكسل
+                        </a>
+                    </div>
+                    <div class="form-text mt-2">ملاحظة: يمكنك استخدام ملف التصدير كقالب للاستيراد.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

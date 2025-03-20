@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-header bg-gradient-primary text-white p-4 rounded-top-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="m-0">
+                            {% if report.type == 'scammer' %}
+                            <i class="fas fa-exclamation-triangle me-2"></i> بلاغ عن نصاب
+                            {% else %}
+                            <i class="fas fa-hand-holding-usd me-2"></i> بلاغ عن مديونية
+                            {% endif %}
+                        </h2>
+                        <div>
+                            <span class="badge bg-light text-dark fs-6">رقم البلاغ: {{ report.id }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <!-- معلومات النصاب -->
+                    <div class="report-section mb-4">
+                        <h4 class="section-title">
+                            <i class="fas fa-user-circle text-primary me-2"></i>
+                            معلومات النصاب
+                        </h4>
+                        <div class="row g-3">
+                            {% if report.scammer_name %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">الاسم:</span>
+                                    <span class="info-value">{{ report.scammer_name|replace('|', ', ') }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if report.scammer_phone %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">رقم الهاتف:</span>
+                                    <span class="info-value">{{ report.scammer_phone|replace('|', ', ') }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- معلومات المحافظ -->
+                    {% if report.wallet_address %}
+                    <div class="report-section mb-4">
+                        <h4 class="section-title">
+                            <i class="fas fa-wallet text-primary me-2"></i>
+                            معلومات المحافظ
+                        </h4>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">عنوان المحفظة:</span>
+                                    <span class="info-value">{{ report.wallet_address|replace('|', ', ') }}</span>
+                                </div>
+                            </div>
+                            
+                            {% if report.network_type %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">نوع الشبكة:</span>
+                                    <span class="info-value">{{ report.network_type|replace('|', ', ') }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- وسائل دفع أخرى -->
+                    {% if report.paypal or report.payer or report.perfect_money or report.alkremi_bank or report.jeeb_wallet or report.jawali_wallet or report.cash_wallet or report.one_cash %}
+                    <div class="report-section mb-4">
+                        <h4 class="section-title">
+                            <i class="fas fa-money-bill-wave text-primary me-2"></i>
+                            وسائل دفع أخرى
+                        </h4>
+                        <div class="row g-3">
+                            {% if report.paypal %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">PayPal:</span>
+                                    <span class="info-value">{{ report.paypal }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if report.payer %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">Payer:</span>
+                                    <span class="info-value">{{ report.payer }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if report.perfect_money %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">Perfect Money:</span>
+                                    <span class="info-value">{{ report.perfect_money }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if report.alkremi_bank %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">بنك الكريمي:</span>
+                                    <span class="info-value">{{ report.alkremi_bank }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if report.jeeb_wallet %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">محفظة جيب:</span>
+                                    <span class="info-value">{{ report.jeeb_wallet }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if report.jawali_wallet %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">محفظة جوالي:</span>
+                                    <span class="info-value">{{ report.jawali_wallet }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if report.cash_wallet %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">محفظة كاش:</span>
+                                    <span class="info-value">{{ report.cash_wallet }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if report.one_cash %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">ون كاش:</span>
+                                    <span class="info-value">{{ report.one_cash }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- الحقول المخصصة -->
+                    {% if custom_fields and custom_fields|length > 0 %}
+                    <section class="report-section">
+                        <div class="report-section-header">
+                            <h3 class="section-title">
+                                <i class="fas fa-plus-circle text-danger me-2"></i>
+                                حقول مخصصة
+                            </h3>
+                        </div>
+                        <div class="report-section-body">
+                            <div class="row">
+                                {% for field_name, field_value in custom_fields.items() %}
+                                    {% if field_value and field_value|string|lower != 'nan' %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="info-item">
+                                            <span class="info-label" style="color: black;">{{ field_name }}:</span>
+                                            <span class="info-value" style="color: red;">
+                                                {{ field_value }}
+                                                {% if field_value in duplicates and duplicates[field_value] > 1 %}
+                                                    <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                        {{ duplicates[field_value] }}
+                                                    </span>
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </section>
+                    {% endif %}
+
+                    <!-- معلومات المديونية -->
+                    {% if report.type == 'debt' and (report.debt_amount or report.debt_date) %}
+                    <div class="report-section mb-4">
+                        <h4 class="section-title">
+                            <i class="fas fa-hand-holding-usd text-primary me-2"></i>
+                            معلومات المديونية
+                        </h4>
+                        <div class="row g-3">
+                            {% if report.debt_amount %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">قيمة المديونية:</span>
+                                    <span class="info-value">{{ report.debt_amount }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if report.debt_date %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">تاريخ المديونية:</span>
+                                    <span class="info-value">{{ report.debt_date.strftime('%Y-%m-%d') }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- وصف البلاغ -->
+                    {% if report.description %}
+                    <div class="report-section mb-4">
+                        <h4 class="section-title">
+                            <i class="fas fa-file-alt text-primary me-2"></i>
+                            وصف البلاغ
+                        </h4>
+                        <div class="description-box p-3 bg-light rounded">
+                            {{ report.description|nl2br }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- الملفات المرفقة -->
+                    {% if report.media_files %}
+                    <div class="report-section mb-4">
+                        <h4 class="section-title">
+                            <i class="fas fa-paperclip text-primary me-2"></i>
+                            الملفات المرفقة
+                        </h4>
+                        <div class="row g-3">
+                            {% for file in report.media_files.split('|') %}
+                            <div class="col-md-4 col-sm-6">
+                                <div class="card attachment-card h-100">
+                                    <div class="card-body p-2 text-center">
+                                        <a href="{{ url_for('uploaded_file', filename=file) }}" target="_blank" class="attachment-link">
+                                            {% if file.lower().endswith(('png', 'jpg', 'jpeg', 'gif', 'webp')) %}
+                                            <img src="{{ url_for('uploaded_file', filename=file) }}" class="img-thumbnail attachment-preview" alt="مرفق">
+                                            {% else %}
+                                            <i class="fas fa-file-alt fa-3x text-primary"></i>
+                                            {% endif %}
+                                            <div class="mt-2 text-truncate">{{ file }}</div>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- معلومات إضافية -->
+                    <div class="report-section mb-4">
+                        <h4 class="section-title">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            معلومات إضافية
+                        </h4>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">تم الإبلاغ بواسطة:</span>
+                                    <span class="info-value">{{ report.user.username }}</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">تاريخ الإبلاغ:</span>
+                                    <span class="info-value">{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                </div>
+                            </div>
+                            {% if report.updated_at and report.updated_at != report.created_at %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <span class="info-label">آخر تحديث:</span>
+                                    <span class="info-value">{{ report.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-light p-3 d-flex justify-content-between">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        العودة للرئيسية
+                    </a>
+                    <div>
+                        {% if current_user.is_authenticated and (current_user.is_admin or current_user.id == report.user_id) %}
+                        <a href="{{ url_for('edit_report', report_id=report.id) }}" class="btn btn-primary me-2">
+                            <i class="fas fa-edit me-1"></i>
+                            تعديل
+                        </a>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteReportModal">
+                            <i class="fas fa-trash-alt me-1"></i>
+                            حذف
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة تأكيد الحذف -->
+{% if current_user.is_authenticated and (current_user.is_admin or current_user.id == report.user_id) %}
+<div class="modal fade" id="deleteReportModal" tabindex="-1" aria-labelledby="deleteReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteReportModalLabel">تأكيد الحذف</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                هل أنت متأكد من رغبتك في حذف هذا البلاغ؟ لا يمكن التراجع عن هذا الإجراء.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <form action="{{ url_for('delete_report', report_id=report.id) }}" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">تأكيد الحذف</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

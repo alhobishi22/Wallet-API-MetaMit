@@ -1,0 +1,514 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-5">
+                    <div class="text-center mb-5">
+                        <h2 class="display-6 mb-3">إضافة بلاغ جديد</h2>
+                        <p class="text-muted">قم بتعبئة النموذج التالي للإبلاغ عن حالة نصب أو مديونية</p>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        <!-- نوع البلاغ -->
+                        <div class="form-group mb-4">
+                            <label class="form-label fw-bold">نوع البلاغ</label>
+                            <select name="type" class="form-select form-select-lg" required>
+                                <option value="scammer">نصاب ومحتال</option>
+                                <option value="debt">مديونية</option>
+                            </select>
+                        </div>
+
+                        <!-- معلومات النصاب -->
+                        <div class="card bg-light border-0 p-4 mb-4">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-user-circle text-primary me-2"></i>
+                                معلومات النصاب
+                            </h5>
+                            <div class="scammer-info">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" name="scammer_name" class="form-control" id="scammerName" placeholder="اسم النصاب" required>
+                                            <label for="scammerName">اسم النصاب</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" name="scammer_phone" class="form-control" id="scammerPhone" placeholder="رقم الهاتف" required>
+                                            <label for="scammerPhone">رقم الهاتف</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary mt-3" onclick="addScammerInfo()">
+                                    <i class="fas fa-plus me-2"></i>
+                                    إضافة معلومات نصاب آخر
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- معلومات المحافظ -->
+                        <div class="card bg-light border-0 p-4 mb-4">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-wallet text-primary me-2"></i>
+                                معلومات المحافظ
+                            </h5>
+                            <div class="wallet-info">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" name="wallet_address" class="form-control" id="walletAddress" placeholder="عنوان المحفظة">
+                                            <label for="walletAddress">عنوان المحفظة</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" name="network_type" class="form-control" id="networkType" placeholder="نوع الشبكة">
+                                            <label for="networkType">نوع الشبكة</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary mt-3" onclick="addWalletInfo()">
+                                    <i class="fas fa-plus me-2"></i>
+                                    إضافة محفظة أخرى
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- وسائل دفع أخرى -->
+                        <div class="card bg-light border-0 p-4 mb-4">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-money-bill-wave text-primary me-2"></i>
+                                وسائل دفع أخرى
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="paypal" class="form-control" id="paypal" placeholder="PayPal">
+                                        <label for="paypal">PayPal</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="payer" class="form-control" id="payer" placeholder="Payer">
+                                        <label for="payer">Payer</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="perfect_money" class="form-control" id="perfectMoney" placeholder="Perfect Money">
+                                        <label for="perfectMoney">Perfect Money</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="alkremi_bank" class="form-control" id="alkremiBank" placeholder="بنك الكريمي">
+                                        <label for="alkremiBank">بنك الكريمي</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="jeeb_wallet" class="form-control" id="jeebWallet" placeholder="محفظة جيب">
+                                        <label for="jeebWallet">محفظة جيب</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="jawali_wallet" class="form-control" id="jawaliWallet" placeholder="محفظة جوالي">
+                                        <label for="jawaliWallet">محفظة جوالي</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="cash_wallet" class="form-control" id="cashWallet" placeholder="محفظة كاش">
+                                        <label for="cashWallet">محفظة كاش</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="one_cash" class="form-control" id="oneCash" placeholder="ون كاش">
+                                        <label for="oneCash">ون كاش</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- حقول مخصصة -->
+                        <div class="card bg-light border-0 p-4 mb-4">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-plus-circle text-primary me-2"></i>
+                                حقول مخصصة
+                            </h5>
+                            <div class="custom-fields">
+                                <p class="text-muted mb-3">يمكنك إضافة حقول مخصصة حسب احتياجك لتوثيق معلومات إضافية</p>
+                                <div id="customFieldsContainer">
+                                    <!-- هنا سيتم إضافة الحقول المخصصة بشكل ديناميكي -->
+                                </div>
+                                <button type="button" class="btn btn-outline-primary mt-3" onclick="addCustomField()">
+                                    <i class="fas fa-plus me-2"></i>
+                                    إضافة حقل مخصص
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- معلومات المديونية -->
+                        <div class="card bg-light border-0 p-4 mb-4 debt-info" style="display: none;">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-hand-holding-usd text-primary me-2"></i>
+                                معلومات المديونية
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="number" name="debt_amount" class="form-control" id="debtAmount" placeholder="قيمة المديونية">
+                                        <label for="debtAmount">قيمة المديونية</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="date" name="debt_date" class="form-control" id="debtDate" placeholder="تاريخ المديونية">
+                                        <label for="debtDate">تاريخ المديونية</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- وصف إضافي -->
+                        <div class="form-group mb-4">
+                            <label class="form-label fw-bold mb-3">وصف إضافي</label>
+                            <textarea name="description" class="form-control" rows="5" placeholder="اكتب تفاصيل إضافية هنا..." required></textarea>
+                        </div>
+
+                        <!-- الملفات المرفقة -->
+                        <div class="form-group mb-4">
+                            <label class="form-label fw-bold mb-3">الملفات المرفقة</label>
+                            <div class="input-group">
+                                <input type="file" name="media_files" class="form-control" id="mediaFiles" multiple>
+                            </div>
+                            <small class="text-muted">يمكنك إرفاق صور أو ملفات PDF (الحد الأقصى: 16 ميجابايت)</small>
+                        </div>
+
+                        <!-- زر الإرسال -->
+                        <div class="text-center mt-5">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                إرسال البلاغ
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+}
+
+.form-floating > .form-control,
+.form-floating > .form-select {
+    height: calc(3.5rem + 2px);
+    line-height: 1.25;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.form-floating > .form-control:focus,
+.form-floating > .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+}
+
+.form-floating > label {
+    padding: 1rem 0.75rem;
+    color: #6c757d;
+}
+
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-select:focus ~ label {
+    color: #0d6efd;
+}
+
+.btn-primary {
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    text-transform: none;
+    transition: all 0.3s ease;
+    background: linear-gradient(45deg, #0d6efd, #0a58ca);
+    border: none;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(13, 110, 253, 0.3);
+    background: linear-gradient(45deg, #0a58ca, #0d6efd);
+}
+
+.btn-outline-secondary {
+    border-width: 2px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #6c757d;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.form-label {
+    color: #495057;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.text-primary {
+    color: #0d6efd !important;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+textarea.form-control {
+    min-height: 120px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    padding: 1rem;
+}
+
+textarea.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+}
+
+.input-group {
+    background-color: white;
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+.card.bg-light {
+    background: linear-gradient(145deg, #f8f9fa, #ffffff);
+    border-radius: 1rem;
+    transition: all 0.3s ease;
+}
+
+.card.bg-light:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+    color: #495057;
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    padding-bottom: 0.5rem;
+}
+
+.section-title:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 50px;
+    height: 2px;
+    background: linear-gradient(90deg, #0d6efd, transparent);
+}
+
+.form-control::placeholder {
+    color: #adb5bd;
+}
+
+.was-validated .form-control:invalid {
+    border-color: #dc3545;
+    box-shadow: none;
+}
+
+.was-validated .form-control:valid {
+    border-color: #198754;
+    box-shadow: none;
+}
+
+.invalid-feedback {
+    font-size: 0.875rem;
+    color: #dc3545;
+    margin-top: 0.25rem;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.debt-info.show {
+    display: block !important;
+    animation: fadeIn 0.3s ease forwards;
+}
+
+.scammer-info .row > div,
+.wallet-info .row > div {
+    animation: fadeIn 0.3s ease forwards;
+}
+
+.form-floating > .form-control:focus::placeholder {
+    color: transparent;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+.btn-group-lg > .btn, .btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    border-radius: 0.5rem;
+}
+
+.display-6 {
+    font-weight: 600;
+    background: linear-gradient(45deg, #0d6efd, #0a58ca);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+</style>
+
+<script>
+// تبديل عرض حقول المديونية مع تأثير حركي
+document.querySelector('select[name="type"]').addEventListener('change', function() {
+    const debtInfo = document.querySelector('.debt-info');
+    if (this.value === 'debt') {
+        debtInfo.style.display = 'block';
+        setTimeout(() => debtInfo.classList.add('show'), 10);
+        document.querySelector('input[name="debt_amount"]').required = true;
+        document.querySelector('input[name="debt_date"]').required = true;
+    } else {
+        debtInfo.classList.remove('show');
+        setTimeout(() => debtInfo.style.display = 'none', 300);
+        document.querySelector('input[name="debt_amount"]').required = false;
+        document.querySelector('input[name="debt_date"]').required = false;
+    }
+});
+
+// إضافة معلومات نصاب جديد مع تأثير حركي
+function addScammerInfo() {
+    const container = document.querySelector('.scammer-info .row');
+    const newFields = `
+        <div class="col-md-6" style="opacity: 0; transform: translateY(10px);">
+            <div class="form-floating">
+                <input type="text" name="scammer_name" class="form-control" placeholder="اسم النصاب">
+                <label>اسم النصاب</label>
+            </div>
+        </div>
+        <div class="col-md-6" style="opacity: 0; transform: translateY(10px);">
+            <div class="form-floating">
+                <input type="text" name="scammer_phone" class="form-control" placeholder="رقم الهاتف">
+                <label>رقم الهاتف</label>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', newFields);
+    
+    // تطبيق التأثير الحركي
+    const newElements = container.querySelectorAll('div[style*="opacity: 0"]');
+    setTimeout(() => {
+        newElements.forEach(el => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+            el.style.transition = 'all 0.3s ease';
+        });
+    }, 10);
+}
+
+// إضافة معلومات محفظة جديدة مع تأثير حركي
+function addWalletInfo() {
+    const container = document.querySelector('.wallet-info .row');
+    const newFields = `
+        <div class="col-md-6" style="opacity: 0; transform: translateY(10px);">
+            <div class="form-floating">
+                <input type="text" name="wallet_address" class="form-control" placeholder="عنوان المحفظة">
+                <label>عنوان المحفظة</label>
+            </div>
+        </div>
+        <div class="col-md-6" style="opacity: 0; transform: translateY(10px);">
+            <div class="form-floating">
+                <input type="text" name="network_type" class="form-control" placeholder="نوع الشبكة">
+                <label>نوع الشبكة</label>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', newFields);
+    
+    // تطبيق التأثير الحركي
+    const newElements = container.querySelectorAll('div[style*="opacity: 0"]');
+    setTimeout(() => {
+        newElements.forEach(el => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+            el.style.transition = 'all 0.3s ease';
+        });
+    }, 10);
+}
+
+// إضافة حقل مخصص جديد
+function addCustomField() {
+    const container = document.getElementById('customFieldsContainer');
+    const fieldIndex = document.querySelectorAll('.custom-field-row').length;
+    const newRow = document.createElement('div');
+    newRow.className = 'row g-3 mt-3 custom-field-row';
+    newRow.innerHTML = `
+        <div class="col-md-5">
+            <div class="form-floating">
+                <input type="text" name="custom_field_name_${fieldIndex}" class="form-control" placeholder="اسم الحقل" required>
+                <label>اسم الحقل</label>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <div class="form-floating">
+                <input type="text" name="custom_field_value_${fieldIndex}" class="form-control" placeholder="قيمة الحقل" required>
+                <label>قيمة الحقل</label>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex align-items-center">
+            <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="this.closest('.custom-field-row').remove()">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(newRow);
+    
+    // تأثير حركي
+    newRow.style.opacity = '0';
+    setTimeout(() => {
+        newRow.style.transition = 'opacity 0.5s';
+        newRow.style.opacity = '1';
+    }, 10);
+}
+
+// تفعيل التحقق من صحة النموذج
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms)
+        .forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+})()
+</script>
+{% endblock %}

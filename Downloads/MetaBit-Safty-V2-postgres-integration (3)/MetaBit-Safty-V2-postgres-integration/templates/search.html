@@ -1,0 +1,1040 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center mb-4">
+    <div class="col-md-8">
+        <div class="card shadow-lg border-0 rounded-4">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <h2 class="display-6 mb-3">البحث عن البلاغات</h2>
+                    <p class="text-muted">ابحث في قاعدة البيانات عن البلاغات المسجلة</p>
+                </div>
+                <form action="{{ url_for('search') }}" method="get">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <div class="form-floating">
+                                <input type="text" name="q" class="form-control form-control-lg" 
+                                       placeholder="ابحث..." value="{{ query }}" id="searchQuery">
+                                <label for="searchQuery">ابحث عن اسم، رقم هاتف، أو معرف حساب...</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <select name="type" class="form-select form-select-lg h-100">
+                                    <option value="all" {% if report_type == 'all' %}selected{% endif %}>جميع البلاغات</option>
+                                    <option value="scammer" {% if report_type == 'scammer' %}selected{% endif %}>بلاغات النصب</option>
+                                    <option value="debt" {% if report_type == 'debt' %}selected{% endif %}>بلاغات المديونية</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-primary btn-lg w-100" type="submit">
+                                <i class="fas fa-search me-2"></i>
+                                بحث
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- زر تحميل جميع جهات الاتصال من قاعدة البيانات -->
+<div class="row justify-content-center mb-4">
+    <div class="col-md-8">
+        <button type="button" class="btn btn-danger btn-lg w-100" onclick="downloadAllContactsFromDatabase()">
+            <i class="fas fa-cloud-download-alt me-2"></i>
+            تحميل جميع جهات الاتصال من قاعدة البيانات
+        </button>
+    </div>
+</div>
+
+<!-- زر تحميل جميع جهات الاتصال من نتائج البحث -->
+<div class="row justify-content-center mb-4">
+    <div class="col-md-8">
+        <button type="button" class="btn btn-success btn-lg w-100" data-bs-toggle="modal" data-bs-target="#allSearchContactsModal">
+            <i class="fas fa-cloud-download-alt me-2"></i>
+            تحميل جميع جهات الاتصال من نتائج البحث
+        </button>
+    </div>
+</div>
+
+{% if query %}
+    {% if results %}
+        <div class="row">
+            {% for result in results %}
+            <div class="col-md-12 mb-4">
+                <div class="card shadow-sm border-0 rounded-4 h-100 report-card">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title mb-1">
+                                    <small class="text-muted">تم الإبلاغ من قبل:</small><br>
+                                    {{ result.username }}
+                                </h5>
+                                {% if result.type == 'scammer' %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        نصاب ومحتال
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-money-bill-wave me-1"></i>
+                                        مدين هارب
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                <small>
+                                    <i class="far fa-calendar-alt me-1"></i>
+                                    {% if result.created_at %}
+                                        {{ result.created_at.strftime('%Y-%m-%d') }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- معلومات الدين -->
+                        {% if result.type == 'debt' and result.debt_amount %}
+                        <div class="alert alert-warning alert-persistent mb-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-money-bill-wave fa-2x me-3"></i>
+                                </div>
+                                <div>
+                                    <h6 class="alert-heading mb-1">معلومات الدين</h6>
+                                    <div><strong>المبلغ:</strong> {{ result.debt_amount }} ريال</div>
+                                    {% if result.debt_date %}
+                                    <div><strong>تاريخ الدين:</strong> {{ result.debt_date.strftime('%Y-%m-%d') }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- معلومات الشخص -->
+                        <div class="info-section mb-4">
+                            <h6 class="section-title">
+                                <i class="fas fa-user-circle me-2"></i>
+                                معلومات الشخص
+                            </h6>
+                            <div class="row">
+                                {% if result.scammer_name %}
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <strong>الاسم:</strong>
+                                        <span class="text-danger scammer-name">
+                                            {% for name in result.scammer_name.split('|') %}
+                                                {% set name_stripped = name.strip() %}
+                                                {% if name_stripped %}
+                                                    {{ name_stripped }}
+                                                    {% if duplicates and name_stripped in duplicates and duplicates[name_stripped] > 1 %}
+                                                        <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                            {{ duplicates[name_stripped] }}
+                                                        </span>
+                                                    {% endif %}
+                                                    {% if not loop.last %} | {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if result.scammer_phone %}
+                                <div class="col-md-6">
+                                    <div class="info-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>رقم الهاتف:</strong>
+                                            <span class="phone-number text-danger">
+                                                {% for phone in result.scammer_phone.split('|') %}
+                                                    {% set phone_stripped = phone.strip() %}
+                                                    {% if phone_stripped %}
+                                                        {{ phone_stripped }}
+                                                        {% if duplicates and phone_stripped in duplicates and duplicates[phone_stripped] > 1 %}
+                                                            <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                                {{ duplicates[phone_stripped] }}
+                                                            </span>
+                                                        {% endif %}
+                                                        {% if not loop.last %} | {% endif %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <button class="btn btn-sm btn-outline-success" onclick="saveContact('{{ result.scammer_phone.split('|')[0] }}', '{% if result.scammer_name %}{{ result.scammer_name.split('|')[0] }}{% else %}نصاب{% endif %}')">
+                                                <i class="fas fa-address-card me-1"></i> حفظ كجهة اتصال
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if result.debtor_name %}
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <strong>اسم المدين:</strong>
+                                        <span class="scammer-name">{{ result.debtor_name }}</span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if result.debtor_phone %}
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <strong>رقم هاتف المدين:</strong>
+                                        <span class="phone-number">{{ result.debtor_phone }}</span>
+                                        <button class="btn btn-sm btn-outline-success ms-2" onclick="saveContact('{{ result.debtor_phone }}', '{{ result.debtor_name }}')">
+                                            <i class="fas fa-address-card"></i> حفظ جهة الاتصال
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- معلومات المحفظة -->
+                        {% if result.wallet_address %}
+                        <div class="info-section mb-4">
+                            <h6 class="section-title">
+                                <i class="fas fa-coins me-2"></i>
+                                معلومات المحفظة
+                            </h6>
+                            <div class="row">
+                                {% if result.wallet_address %}
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <strong>عنوان المحفظة:</strong>
+                                        <span class="text-danger">
+                                            {% for wallet in result.wallet_address.split('|') %}
+                                                {% set wallet_stripped = wallet.strip() %}
+                                                {% if wallet_stripped %}
+                                                    {{ wallet_stripped }}
+                                                    {% if duplicates and wallet_stripped in duplicates and duplicates[wallet_stripped] > 1 %}
+                                                        <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                            {{ duplicates[wallet_stripped] }}
+                                                        </span>
+                                                    {% endif %}
+                                                    {% if not loop.last %} | {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if result.network_type %}
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <strong>نوع الشبكة:</strong>
+                                        <span>{{ result.network_type }}</span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- المحافظ الرقمية العالمية -->
+                        {% if result.paypal or result.payer or result.perfect_money %}
+                        <div class="info-section mb-4">
+                            <h6 class="section-title">
+                                <i class="fas fa-globe me-2"></i>
+                                المحافظ الرقمية العالمية
+                            </h6>
+                            <div class="row">
+                                {% if result.paypal %}
+                                <div class="col-md-4">
+                                    <div class="info-item">
+                                        <strong>PayPal:</strong>
+                                        <span class="text-danger">
+                                            {% if result.paypal.strip() %}
+                                                {{ result.paypal }}
+                                                {% if duplicates and result.paypal in duplicates and duplicates[result.paypal] > 1 %}
+                                                    <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                        {{ duplicates[result.paypal] }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">لا يوجد</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if result.payer %}
+                                <div class="col-md-4">
+                                    <div class="info-item">
+                                        <strong>Payer:</strong>
+                                        <span class="text-danger">
+                                            {% if result.payer.strip() %}
+                                                {{ result.payer }}
+                                                {% if duplicates and result.payer in duplicates and duplicates[result.payer] > 1 %}
+                                                    <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                        {{ duplicates[result.payer] }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">لا يوجد</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if result.perfect_money %}
+                                <div class="col-md-4">
+                                    <div class="info-item">
+                                        <strong>Perfect Money:</strong>
+                                        <span class="text-danger">
+                                            {% if result.perfect_money.strip() %}
+                                                {{ result.perfect_money }}
+                                                {% if duplicates and result.perfect_money in duplicates and duplicates[result.perfect_money] > 1 %}
+                                                    <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                        {{ duplicates[result.perfect_money] }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">لا يوجد</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- المحافظ المحلية -->
+                        {% if result.alkremi_bank or result.jeeb_wallet or result.jawali_wallet or result.cash_wallet or result.one_cash %}
+                        <div class="info-section mb-4">
+                            <h6 class="section-title">
+                                <i class="fas fa-wallet me-2"></i>
+                                المحافظ والحسابات المحلية
+                            </h6>
+                            <div class="row">
+                                {% if result.alkremi_bank %}
+                                <div class="col-md-4">
+                                    <div class="info-item">
+                                        <strong>بنك الكريمي:</strong>
+                                        <span class="text-danger">
+                                            {% if result.alkremi_bank.strip() %}
+                                                {{ result.alkremi_bank }}
+                                                {% if duplicates and result.alkremi_bank in duplicates and duplicates[result.alkremi_bank] > 1 %}
+                                                    <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                        {{ duplicates[result.alkremi_bank] }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">لا يوجد</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if result.jeeb_wallet %}
+                                <div class="col-md-4">
+                                    <div class="info-item">
+                                        <strong>محفظة جيب:</strong>
+                                        <span class="text-danger">
+                                            {% if result.jeeb_wallet.strip() %}
+                                                {{ result.jeeb_wallet }}
+                                                {% if duplicates and result.jeeb_wallet in duplicates and duplicates[result.jeeb_wallet] > 1 %}
+                                                    <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                        {{ duplicates[result.jeeb_wallet] }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">لا يوجد</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if result.jawali_wallet %}
+                                <div class="col-md-4">
+                                    <div class="info-item">
+                                        <strong>محفظة جوالي:</strong>
+                                        <span class="text-danger">
+                                            {% if result.jawali_wallet.strip() %}
+                                                {{ result.jawali_wallet }}
+                                                {% if duplicates and result.jawali_wallet in duplicates and duplicates[result.jawali_wallet] > 1 %}
+                                                    <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                        {{ duplicates[result.jawali_wallet] }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">لا يوجد</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if result.cash_wallet %}
+                                <div class="col-md-4">
+                                    <div class="info-item">
+                                        <strong>محفظة كاش:</strong>
+                                        <span class="text-danger">
+                                            {% if result.cash_wallet.strip() %}
+                                                {{ result.cash_wallet }}
+                                                {% if duplicates and result.cash_wallet in duplicates and duplicates[result.cash_wallet] > 1 %}
+                                                    <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                        {{ duplicates[result.cash_wallet] }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">لا يوجد</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if result.one_cash %}
+                                <div class="col-md-4">
+                                    <div class="info-item">
+                                        <strong>ون كاش:</strong>
+                                        <span class="text-danger">
+                                            {% if result.one_cash.strip() %}
+                                                {{ result.one_cash }}
+                                                {% if duplicates and result.one_cash in duplicates and duplicates[result.one_cash] > 1 %}
+                                                    <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                        {{ duplicates[result.one_cash] }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">لا يوجد</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- الحقول المخصصة -->
+                        {% if result.custom_fields and result.custom_fields|length > 0 %}
+                        <div class="search-result-custom-fields mb-4">
+                            <h6 class="section-title">
+                                <i class="fas fa-plus-circle me-2"></i>
+                                حقول مخصصة
+                            </h6>
+                            <div class="row">
+                                {% for field_name, field_value in result.custom_fields.items() %}
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <strong style="color: black;">{{ field_name }}:</strong>
+                                        <span style="color: red;">
+                                            {{ field_value }}
+                                            {% if field_value in duplicates and duplicates[field_value] > 1 %}
+                                                <span class="badge rounded-pill bg-primary ms-1" style="font-size: 0.75rem; vertical-align: middle;" title="عدد مرات التكرار في البلاغات">
+                                                    {{ duplicates[field_value] }}
+                                                </span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if result.description %}
+                        <div class="info-section">
+                            <h6 class="section-title">
+                                <i class="fas fa-comment-alt me-2"></i>
+                                الوصف
+                            </h6>
+                            <div class="report-description">
+                                {{ result.description|nl2br|safe }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-4">
+                            <a href="{{ url_for('view_report', report_id=result.id) }}" class="btn btn-outline-primary">
+                                <i class="fas fa-eye me-2"></i>
+                                عرض التفاصيل الكاملة
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info text-center p-4 rounded-4">
+            <i class="fas fa-search fa-2x mb-3"></i>
+            <h4>لم يتم العثور على نتائج</h4>
+            <p class="mb-0">جرب البحث باستخدام كلمات مختلفة أو تغيير نوع البلاغ</p>
+        </div>
+    {% endif %}
+{% endif %}
+
+<!-- Modal for Contact Creation -->
+<div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="contactModalLabel">حفظ جهة اتصال</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="contactForm">
+                    <div class="mb-3">
+                        <label for="contactName" class="form-label">الاسم</label>
+                        <input type="text" class="form-control" id="contactName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contactPhone" class="form-label">رقم الهاتف</label>
+                        <input type="tel" class="form-control" id="contactPhone" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contactPrefix" class="form-label">بادئة الاسم</label>
+                        <input type="text" class="form-control" id="contactPrefix" value="نصاب">
+                        <small class="text-muted">سيتم إضافة هذه البادئة إلى اسم جهة الاتصال</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contactNotes" class="form-label">ملاحظات</label>
+                        <textarea class="form-control" id="contactNotes" rows="3">تم الإبلاغ عنه كنصاب في نظام البلاغات</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-success" id="downloadVcard">حفظ جهة الاتصال</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for All Search Contacts -->
+<div class="modal fade" id="allSearchContactsModal" tabindex="-1" aria-labelledby="allSearchContactsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="allSearchContactsModalLabel">حفظ جميع جهات الاتصال من نتائج البحث</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>سيتم تنزيل ملف يحتوي على جميع أرقام النصابين الموجودة في نتائج البحث.</p>
+                <form id="allSearchContactsForm">
+                    <div class="mb-3">
+                        <label for="searchContactsPrefix" class="form-label">بادئة الاسم</label>
+                        <input type="text" class="form-control" id="searchContactsPrefix" value="نصاب">
+                        <small class="text-muted">سيتم إضافة هذه البادئة إلى اسم كل جهة اتصال</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-success" id="downloadAllSearchVcards">تنزيل جميع جهات الاتصال</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for All Database Contacts -->
+<div class="modal fade" id="allDatabaseContactsModal" tabindex="-1" aria-labelledby="allDatabaseContactsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="allDatabaseContactsModalLabel">تحميل جميع جهات الاتصال من قاعدة البيانات</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>سيتم تنزيل ملف يحتوي على جميع أرقام النصابين الموجودة في قاعدة البيانات.</p>
+                <form id="allDatabaseContactsForm">
+                    <div class="mb-3">
+                        <label for="databaseContactsPrefix" class="form-label">بادئة الاسم</label>
+                        <input type="text" class="form-control" id="databaseContactsPrefix" value="نصاب">
+                        <small class="text-muted">سيتم إضافة هذه البادئة إلى اسم كل جهة اتصال</small>
+                    </div>
+                </form>
+                <div id="loadingSpinner" class="text-center d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">جاري التحميل...</span>
+                    </div>
+                    <p class="mt-2">جاري تحميل جهات الاتصال...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-success" id="downloadAllDatabaseVcards">تنزيل جميع جهات الاتصال</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- إضافة Font Awesome -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+<!-- إضافة سكريبت إبراز كلمات البحث -->
+<script src="{{ url_for('static', filename='js/search-highlight.js') }}"></script>
+
+<script>
+    // وظيفة مساعدة لعرض رسائل الإشعار بدون عنوان الموقع
+    function showAlert(message) {
+        // إنشاء عنصر div للإشعار
+        var alertDiv = document.createElement('div');
+        alertDiv.className = 'custom-alert';
+        alertDiv.innerHTML = `
+            <div class="alert-content">
+                <div class="alert-message">${message}</div>
+                <button class="alert-button">موافق</button>
+            </div>
+        `;
+        
+        // إضافة الإشعار إلى الصفحة
+        document.body.appendChild(alertDiv);
+        
+        // إضافة حدث النقر لزر الإغلاق
+        alertDiv.querySelector('.alert-button').addEventListener('click', function() {
+            document.body.removeChild(alertDiv);
+        });
+        
+        // إغلاق الإشعار عند النقر خارجه
+        alertDiv.addEventListener('click', function(event) {
+            if (event.target === alertDiv) {
+                document.body.removeChild(alertDiv);
+            }
+        });
+    }
+    
+    // وظيفة لإنشاء vCard متوافق مع تطبيقات الهاتف المحمول
+    function createVCard(phone, name, namePrefix = 'نصاب') {
+        // التحقق من وجود رقم هاتف صالح
+        if (!phone || phone.trim() === '') {
+            throw new Error('رقم الهاتف غير صالح أو فارغ');
+        }
+        
+        // تنظيف البيانات وإزالة أي أحرف خاصة قد تسبب مشاكل
+        var cleanName = name ? name.replace(/[^\u0600-\u06FF\s\w\d()]/g, '') : namePrefix;
+        if (!cleanName || cleanName.trim() === '') cleanName = namePrefix;
+        
+        // إضافة بادئة الاسم إذا لم تكن موجودة بالفعل
+        if (!cleanName.includes(namePrefix)) {
+            cleanName = namePrefix + ' ' + cleanName;
+        }
+        
+        var cleanPhone = phone ? phone.replace(/[^\d+]/g, '') : '';
+        
+        // التحقق من وجود رقم هاتف بعد التنظيف
+        if (!cleanPhone || cleanPhone.trim() === '') {
+            throw new Error('رقم الهاتف غير صالح بعد التنظيف');
+        }
+        
+        // إضافة رمز الدولة إذا لم يكن موجوداً
+        if (!cleanPhone.startsWith('+')) {
+            // إذا كان الرقم يبدأ بصفر، نحذف الصفر ونضيف 966+
+            if (cleanPhone.startsWith('0')) {
+                cleanPhone = '+966' + cleanPhone.substring(1);
+            } else {
+                // إذا لم يبدأ بصفر، نضيف 966+ مباشرة
+                cleanPhone = '+966' + cleanPhone;
+            }
+        }
+        
+        // إنشاء vCard بتنسيق متوافق مع تطبيقات الهاتف المحمول
+        var vcard = 'BEGIN:VCARD\r\n';
+        vcard += 'VERSION:3.0\r\n';
+        vcard += 'N:' + cleanName + ';;;;\r\n';
+        vcard += 'FN:' + cleanName + '\r\n';
+        vcard += 'TEL;TYPE=CELL:' + cleanPhone + '\r\n';
+        vcard += 'NOTE:تم الإبلاغ عنه كنصاب في نظام البلاغات\r\n';
+        vcard += 'CATEGORIES:نصاب\r\n';
+        vcard += 'END:VCARD\r\n\r\n';
+        
+        return {
+            vcard: vcard,
+            cleanName: cleanName,
+            cleanPhone: cleanPhone
+        };
+    }
+    
+    // وظيفة لتنزيل vCard
+    function downloadVCard(vcard, filename) {
+        var blob = new Blob([vcard], { type: 'text/vcard' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    // وظيفة لحفظ جهة اتصال واحدة
+    function saveContact(phone, name) {
+        // التحقق من صحة رقم الهاتف
+        if (!phone || phone.trim() === '') {
+            showAlert('خطأ: رقم الهاتف غير صالح');
+            return;
+        }
+        
+        // وضع القيم في المودال
+        document.getElementById('contactPhone').value = phone;
+        document.getElementById('contactName').value = name;
+        
+        // عرض المودال
+        var contactModal = new bootstrap.Modal(document.getElementById('contactModal'));
+        contactModal.show();
+        
+        // معالجة نقر زر التنزيل
+        document.getElementById('downloadVcard').onclick = function() {
+            try {
+                // الحصول على القيم من المودال
+                var phone = document.getElementById('contactPhone').value;
+                var name = document.getElementById('contactName').value;
+                var namePrefix = document.getElementById('contactPrefix').value || 'نصاب';
+                
+                // التحقق من صحة البيانات
+                if (!phone || phone.trim() === '') {
+                    throw new Error('رقم الهاتف غير صالح');
+                }
+                
+                // إنشاء vCard
+                var vcardData = createVCard(phone, name, namePrefix);
+                
+                // تنزيل vCard
+                downloadVCard(vcardData.vcard, vcardData.cleanName + '.vcf');
+                
+                // عرض رسالة نجاح بدون عنوان الموقع
+                showAlert('تم تنزيل جهة الاتصال بنجاح!');
+                
+                // إغلاق المودال
+                contactModal.hide();
+            } catch (error) {
+                console.error('Error creating contact:', error);
+                showAlert('حدث خطأ أثناء تحميل جهة الاتصال: ' + error.message);
+            }
+        };
+    }
+    
+    // وظيفة لتنزيل جميع جهات الاتصال من نتائج البحث
+    function downloadAllContactsFromSearch() {
+        try {
+            // الحصول على بادئة الاسم
+            var namePrefix = document.getElementById('searchContactsPrefix').value || 'نصاب';
+            
+            // جمع جميع أرقام الهواتف من نتائج البحث
+            var phoneElements = document.querySelectorAll('.report-card .phone-number');
+            var nameElements = document.querySelectorAll('.report-card .scammer-name');
+            
+            if (phoneElements.length > 0) {
+                var vcard = '';
+                var successCount = 0;
+                
+                // إنشاء vCard لكل رقم هاتف
+                for (var i = 0; i < phoneElements.length; i++) {
+                    try {
+                        var phone = phoneElements[i].textContent.trim();
+                        var name = (i < nameElements.length) ? nameElements[i].textContent.trim() : '';
+                        
+                        // التحقق من صحة رقم الهاتف
+                        if (!phone || phone.trim() === '') {
+                            continue;
+                        }
+                        
+                        // إنشاء vCard
+                        var vcardData = createVCard(phone, name, namePrefix);
+                        vcard += vcardData.vcard;
+                        successCount++;
+                    } catch (itemError) {
+                        console.error('Error processing contact item:', itemError);
+                        // استمر في المعالجة حتى مع وجود خطأ في عنصر واحد
+                    }
+                }
+                
+                if (successCount > 0) {
+                    // تنزيل vCard
+                    downloadVCard(vcard, 'جميع_النصابين_من_نتائج_البحث.vcf');
+                    
+                    // عرض رسالة نجاح
+                    showAlert('تم تنزيل ' + successCount + ' جهة اتصال بنجاح');
+                } else {
+                    showAlert('لم يتم تنزيل أي جهة اتصال. تأكد من وجود أرقام هواتف صالحة.');
+                }
+            } else {
+                showAlert('لم يتم العثور على أرقام هواتف في نتائج البحث');
+            }
+            
+            // إغلاق المودال - استخدام الطريقة الصحيحة
+            var modalElement = document.getElementById('allSearchContactsModal');
+            var modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        } catch (error) {
+            console.error('Error downloading contacts:', error);
+            showAlert('حدث خطأ أثناء تحميل جهات الاتصال: ' + error.message);
+        }
+    }
+    
+    // وظيفة لتنزيل جميع جهات الاتصال من قاعدة البيانات
+    function downloadAllContactsFromDatabase() {
+        // إظهار مؤشر التحميل
+        document.getElementById('loadingSpinner').classList.remove('d-none');
+        
+        // الحصول على بادئة الاسم
+        var namePrefix = document.getElementById('databaseContactsPrefix').value || 'نصاب';
+        
+        // جلب جميع جهات الاتصال من قاعدة البيانات
+        fetch('/get_all_contacts')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(contacts => {
+                if (contacts.length > 0) {
+                    var vcard = '';
+                    var successCount = 0;
+                    
+                    // إنشاء vCard لكل جهة اتصال
+                    contacts.forEach(contact => {
+                        try {
+                            // التحقق من صحة رقم الهاتف
+                            if (!contact.phone || contact.phone.trim() === '') {
+                                return;
+                            }
+                            
+                            // إنشاء vCard
+                            var vcardData = createVCard(contact.phone, contact.name, namePrefix);
+                            vcard += vcardData.vcard;
+                            successCount++;
+                        } catch (itemError) {
+                            console.error('Error processing contact item:', itemError);
+                            // استمر في المعالجة حتى مع وجود خطأ في عنصر واحد
+                        }
+                    });
+                    
+                    if (successCount > 0) {
+                        // تنزيل vCard
+                        downloadVCard(vcard, 'جميع_النصابين_من_قاعدة_البيانات.vcf');
+                        
+                        // عرض رسالة نجاح
+                        showAlert('تم تنزيل ' + successCount + ' جهة اتصال بنجاح');
+                    } else {
+                        showAlert('لم يتم تنزيل أي جهة اتصال. تأكد من وجود أرقام هواتف صالحة.');
+                    }
+                } else {
+                    showAlert('لم يتم العثور على أرقام هواتف في قاعدة البيانات');
+                }
+                
+                // إخفاء مؤشر التحميل
+                document.getElementById('loadingSpinner').classList.add('d-none');
+                
+                // إغلاق المودال - استخدام الطريقة الصحيحة
+                var modalElement = document.getElementById('allDatabaseContactsModal');
+                var modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching contacts:', error);
+                showAlert('حدث خطأ أثناء تحميل جهات الاتصال: ' + error.message);
+                
+                // إخفاء مؤشر التحميل
+                document.getElementById('loadingSpinner').classList.add('d-none');
+            });
+    }
+    
+    // وظيفة لإبراز النص داخل عنصر
+    function highlightText(element) {
+        // تجاهل العناصر غير النصية
+        if (element.tagName === 'BUTTON' || element.tagName === 'INPUT' || 
+            element.tagName === 'SELECT' || element.tagName === 'TEXTAREA' ||
+            element.tagName === 'SCRIPT' || element.tagName === 'STYLE') {
+            return;
+        }
+        
+        // قائمة بالعناصر التي لا نريد إبرازها
+        const excludedElements = ['strong', 'label', 'h5', 'h6', 'th'];
+        
+        // تجاهل العناصر التي هي عناوين أو تسميات
+        if (excludedElements.includes(element.tagName.toLowerCase()) ||
+            (element.parentElement && excludedElements.includes(element.parentElement.tagName.toLowerCase()))) {
+            return;
+        }
+        
+        // الحصول على استعلام البحث
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchQuery = urlParams.get('q');
+        
+        if (!searchQuery || searchQuery.trim() === '') {
+            return;
+        }
+        
+        // تقسيم استعلام البحث إلى كلمات
+        const searchTerms = searchQuery.trim().split(/\s+/).filter(term => term.length > 0);
+        
+        // إنشاء نمط للبحث
+        const searchPattern = new RegExp('(' + searchTerms.map(term => 
+            term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        ).join('|') + ')', 'gi');
+        
+        // إذا كان العنصر يحتوي على نص فقط
+        if (element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE) {
+            const text = element.textContent;
+            if (searchPattern.test(text)) {
+                // إعادة ضبط النمط لتجنب مشاكل lastIndex
+                searchPattern.lastIndex = 0;
+                
+                // استبدال النص بنفس النص مع إضافة تنسيق للكلمات المطابقة
+                element.innerHTML = text.replace(searchPattern, 
+                    '<mark class="metabit-highlight">$1</mark>'
+                );
+            }
+        }
+        // إذا كان العنصر يحتوي على عناصر فرعية
+        else {
+            // البحث في عقد النص المباشرة
+            for (let i = 0; i < element.childNodes.length; i++) {
+                const node = element.childNodes[i];
+                
+                // إذا كانت عقدة نص
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const text = node.textContent;
+                    if (searchPattern.test(text)) {
+                        // إعادة ضبط النمط
+                        searchPattern.lastIndex = 0;
+                        
+                        // إنشاء عنصر مؤقت
+                        const tempSpan = document.createElement('span');
+                        tempSpan.innerHTML = text.replace(searchPattern, 
+                            '<mark class="metabit-highlight">$1</mark>'
+                        );
+                        
+                        // استبدال عقدة النص بالعنصر الجديد
+                        element.replaceChild(tempSpan, node);
+                        
+                        // تعديل المؤشر
+                        i++;
+                    }
+                }
+            }
+        }
+    }
+    
+    // إضافة مستمعات الأحداث عند تحميل الصفحة
+    document.addEventListener('DOMContentLoaded', function() {
+        // تهيئة المودال
+        var allSearchContactsModal = new bootstrap.Modal(document.getElementById('allSearchContactsModal'));
+        var allDatabaseContactsModal = new bootstrap.Modal(document.getElementById('allDatabaseContactsModal'));
+        
+        // زر تنزيل جميع جهات الاتصال من نتائج البحث
+        document.getElementById('downloadAllSearchVcards').onclick = downloadAllContactsFromSearch;
+        
+        // زر تنزيل جميع جهات الاتصال من قاعدة البيانات
+        document.getElementById('downloadAllDatabaseVcards').onclick = downloadAllContactsFromDatabase;
+        
+        // إبراز نتائج البحث
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchQuery = urlParams.get('q');
+        
+        if (searchQuery && searchQuery.trim() !== '') {
+            // البحث في جميع عناصر النص في الصفحة
+            const allTextElements = document.querySelectorAll('.report-card .info-item span:not(strong), .report-card td, .description-text');
+            
+            // تطبيق الإبراز على جميع العناصر
+            allTextElements.forEach(highlightText);
+            
+            // تطبيق الإبراز على عناصر محددة بشكل مباشر
+            const specificElements = [
+                '.report-card .card-title',
+                '.report-card .info-item',
+                '.report-card .text-danger',
+                '.report-card .section-title',
+                '.report-card .description-text'
+            ];
+            
+            specificElements.forEach(selector => {
+                document.querySelectorAll(selector).forEach(highlightText);
+            });
+            
+            // إضافة تأثير بصري للعناصر المبرزة
+            setTimeout(function() {
+                const highlights = document.querySelectorAll('.metabit-highlight');
+                highlights.forEach(function(el, index) {
+                    // إضافة تأخير مختلف لكل عنصر لإنشاء تأثير متتابع
+                    setTimeout(function() {
+                        el.classList.add('active');
+                    }, index * 50);
+                });
+            }, 300);
+        }
+    });
+</script>
+
+<style>
+    /* أنماط عامة */
+    body {
+        font-family: 'Tajawal', sans-serif;
+        background-color: #f8f9fa;
+        direction: rtl;
+    }
+    
+    /* أنماط الإشعارات المخصصة */
+    .custom-alert {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        direction: rtl;
+    }
+    
+    .alert-content {
+        background-color: #222;
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        max-width: 80%;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .alert-message {
+        font-size: 18px;
+        margin-bottom: 15px;
+    }
+    
+    .alert-button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin-top: 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+    
+    .alert-button:hover {
+        background-color: #45a049;
+    }
+    
+    /* أنماط إبراز نتائج البحث */
+    .metabit-highlight {
+        background-color: rgba(255, 255, 0, 0.3);
+        padding: 2px 0;
+        border-radius: 3px;
+        transition: background-color 0.5s ease;
+    }
+    
+    .metabit-highlight.active {
+        background-color: rgba(255, 255, 0, 0.7);
+    }
+    
+    .metabit-highlight:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+</style>
+
+{% endblock %}

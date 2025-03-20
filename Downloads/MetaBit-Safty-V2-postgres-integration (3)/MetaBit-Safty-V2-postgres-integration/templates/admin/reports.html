@@ -1,0 +1,124 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="fas fa-flag me-2"></i>إدارة البلاغات</h2>
+        <div>
+            <a href="{{ url_for('import_reports_excel') }}" class="btn btn-primary">
+                <i class="fas fa-file-import me-1"></i> استيراد البلاغات
+            </a>
+            <a href="{{ url_for('export_reports_excel', type=report_type) }}" class="btn btn-success">
+                <i class="fas fa-file-excel me-1"></i> تصدير إلى إكسل
+            </a>
+            <span class="badge bg-primary fs-5 ms-2">{{ reports|length }} بلاغ</span>
+        </div>
+    </div>
+
+    <!-- Filter Controls -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-primary bg-gradient text-white">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>تصفية البلاغات</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('admin_reports', type='all') }}" class="btn {% if report_type == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    <i class="fas fa-list me-1"></i> جميع البلاغات
+                </a>
+                <a href="{{ url_for('admin_reports', type='scammer') }}" class="btn {% if report_type == 'scammer' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                    <i class="fas fa-exclamation-triangle me-1"></i> بلاغات النصب
+                </a>
+                <a href="{{ url_for('admin_reports', type='debt') }}" class="btn {% if report_type == 'debt' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                    <i class="fas fa-money-bill-wave me-1"></i> بلاغات المديونية
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-primary bg-gradient text-white">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>قائمة البلاغات</h5>
+        </div>
+        <div class="card-body">
+            {% if reports %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">النوع</th>
+                            <th scope="col">اسم النصاب</th>
+                            <th scope="col">رقم الهاتف</th>
+                            <th scope="col">المستخدم</th>
+                            <th scope="col">تاريخ الإنشاء</th>
+                            <th scope="col">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in reports %}
+                        <tr>
+                            <th scope="row">{{ item.report.id }}</th>
+                            <td>
+                                {% if item.report.type == 'scammer' %}
+                                <span class="badge bg-danger">نصاب</span>
+                                {% else %}
+                                <span class="badge bg-warning">مديونية</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.report.scammer_name.split('|')[0] }}</td>
+                            <td>{{ item.report.scammer_phone.split('|')[0] }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ item.username }}</span>
+                            </td>
+                            <td>{{ item.report.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('view_report', report_id=item.report.id) }}" class="btn btn-sm btn-primary" title="عرض البلاغ">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteReportModal{{ item.report.id }}" title="حذف البلاغ">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Delete Report Modal -->
+                                <div class="modal fade" id="deleteReportModal{{ item.report.id }}" tabindex="-1" aria-labelledby="deleteReportModalLabel{{ item.report.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title" id="deleteReportModalLabel{{ item.report.id }}">تأكيد حذف البلاغ</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>هل أنت متأكد من حذف البلاغ رقم <strong>#{{ item.report.id }}</strong>؟</p>
+                                                <div class="alert alert-warning">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                                    سيتم حذف جميع الملفات المرفقة بهذا البلاغ.
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                                <form action="{{ url_for('admin_delete_report', report_id=item.report.id) }}" method="post">
+                                                    <button type="submit" class="btn btn-danger">تأكيد الحذف</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                لا توجد بلاغات متاحة.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

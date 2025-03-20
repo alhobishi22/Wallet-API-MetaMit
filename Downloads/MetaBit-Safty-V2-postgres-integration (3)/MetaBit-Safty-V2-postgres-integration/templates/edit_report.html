@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-5">
+                    <div class="text-center mb-5">
+                        <h2 class="display-6 mb-3">تعديل البلاغ</h2>
+                        <p class="text-muted">قم بتعديل معلومات البلاغ</p>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        <!-- نوع البلاغ -->
+                        <div class="form-group mb-4">
+                            <label class="form-label fw-bold">نوع البلاغ</label>
+                            <select name="type" class="form-select form-select-lg" required>
+                                <option value="scammer" {% if report.type == 'scammer' %}selected{% endif %}>نصاب ومحتال</option>
+                                <option value="debt" {% if report.type == 'debt' %}selected{% endif %}>مديونية</option>
+                            </select>
+                        </div>
+
+                        <!-- معلومات النصاب -->
+                        <div class="card bg-light border-0 p-4 mb-4">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-user-circle text-primary me-2"></i>
+                                معلومات النصاب
+                            </h5>
+                            <div class="scammer-info">
+                                {% set scammer_names = report.scammer_name.split('|') if report.scammer_name else [''] %}
+                                {% set scammer_phones = report.scammer_phone.split('|') if report.scammer_phone else [''] %}
+                                
+                                {% for i in range(scammer_names|length) %}
+                                <div class="row g-3 {% if i > 0 %}mt-3 new-scammer-info{% endif %}">
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" name="scammer_name" class="form-control" placeholder="اسم النصاب" value="{{ scammer_names[i] }}" required>
+                                            <label>اسم النصاب</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" name="scammer_phone" class="form-control" placeholder="رقم الهاتف" value="{{ scammer_phones[i] if i < scammer_phones|length else '' }}" required>
+                                            <label>رقم الهاتف</label>
+                                        </div>
+                                    </div>
+                                    {% if i > 0 %}
+                                    <div class="col-12 text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentNode.parentNode.remove()">
+                                            <i class="fas fa-trash-alt me-1"></i> حذف
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                                
+                                <button type="button" class="btn btn-outline-secondary mt-3" onclick="addScammerInfo()">
+                                    <i class="fas fa-plus me-2"></i>
+                                    إضافة معلومات نصاب آخر
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- معلومات المحافظ -->
+                        <div class="card bg-light border-0 p-4 mb-4">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-wallet text-primary me-2"></i>
+                                معلومات المحافظ
+                            </h5>
+                            <div class="wallet-info">
+                                {% set wallet_addresses = report.wallet_address.split('|') if report.wallet_address else [''] %}
+                                {% set network_types = report.network_type.split('|') if report.network_type else [''] %}
+                                
+                                {% for i in range(wallet_addresses|length) %}
+                                <div class="row g-3 {% if i > 0 %}mt-3 new-wallet-info{% endif %}">
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" name="wallet_address" class="form-control" placeholder="عنوان المحفظة" value="{{ wallet_addresses[i] }}">
+                                            <label>عنوان المحفظة</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" name="network_type" class="form-control" placeholder="نوع الشبكة" value="{{ network_types[i] if i < network_types|length else '' }}">
+                                            <label>نوع الشبكة</label>
+                                        </div>
+                                    </div>
+                                    {% if i > 0 %}
+                                    <div class="col-12 text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentNode.parentNode.remove()">
+                                            <i class="fas fa-trash-alt me-1"></i> حذف
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                                
+                                <button type="button" class="btn btn-outline-secondary mt-3" onclick="addWalletInfo()">
+                                    <i class="fas fa-plus me-2"></i>
+                                    إضافة محفظة أخرى
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- وسائل دفع أخرى -->
+                        <div class="card bg-light border-0 p-4 mb-4">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-money-bill-wave text-primary me-2"></i>
+                                وسائل دفع أخرى
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="paypal" class="form-control" id="paypal" placeholder="PayPal" value="{{ report.paypal or '' }}">
+                                        <label for="paypal">PayPal</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="payer" class="form-control" id="payer" placeholder="Payer" value="{{ report.payer or '' }}">
+                                        <label for="payer">Payer</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="perfect_money" class="form-control" id="perfectMoney" placeholder="Perfect Money" value="{{ report.perfect_money or '' }}">
+                                        <label for="perfectMoney">Perfect Money</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="alkremi_bank" class="form-control" id="alkremiBank" placeholder="بنك الكريمي" value="{{ report.alkremi_bank or '' }}">
+                                        <label for="alkremiBank">بنك الكريمي</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="jeeb_wallet" class="form-control" id="jeebWallet" placeholder="محفظة جيب" value="{{ report.jeeb_wallet or '' }}">
+                                        <label for="jeebWallet">محفظة جيب</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="jawali_wallet" class="form-control" id="jawaliWallet" placeholder="محفظة جوالي" value="{{ report.jawali_wallet or '' }}">
+                                        <label for="jawaliWallet">محفظة جوالي</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="cash_wallet" class="form-control" id="cashWallet" placeholder="محفظة كاش" value="{{ report.cash_wallet or '' }}">
+                                        <label for="cashWallet">محفظة كاش</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" name="one_cash" class="form-control" id="oneCash" placeholder="ون كاش" value="{{ report.one_cash or '' }}">
+                                        <label for="oneCash">ون كاش</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- حقول مخصصة -->
+                        <div class="card bg-light border-0 p-4 mb-4">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-plus-circle text-primary me-2"></i>
+                                حقول مخصصة
+                            </h5>
+                            <div class="custom-fields">
+                                <p class="text-muted mb-3">يمكنك إضافة حقول مخصصة حسب احتياجك لتوثيق معلومات إضافية</p>
+                                <div id="customFieldsContainer">
+                                    <!-- عرض الحقول المخصصة الموجودة -->
+                                    {% if custom_fields %}
+                                        {% for field_name, field_value in custom_fields.items() %}
+                                        <div class="row g-3 mt-3 custom-field-row">
+                                            <div class="col-md-5">
+                                                <div class="form-floating">
+                                                    <input type="text" name="custom_field_name_{{ loop.index0 }}" class="form-control" placeholder="اسم الحقل" value="{{ field_name }}" required>
+                                                    <label>اسم الحقل</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <div class="form-floating">
+                                                    <input type="text" name="custom_field_value_{{ loop.index0 }}" class="form-control" placeholder="قيمة الحقل" value="{{ field_value }}" required>
+                                                    <label>قيمة الحقل</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-center">
+                                                <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="this.closest('.custom-field-row').remove()">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                                <button type="button" class="btn btn-outline-primary mt-3" onclick="addCustomField()">
+                                    <i class="fas fa-plus me-2"></i>
+                                    إضافة حقل مخصص
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- معلومات المديونية -->
+                        <div class="card bg-light border-0 p-4 mb-4 debt-info" {% if report.type != 'debt' %}style="display: none;"{% endif %}>
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-hand-holding-usd text-primary me-2"></i>
+                                معلومات المديونية
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="number" name="debt_amount" class="form-control" id="debtAmount" placeholder="قيمة المديونية" value="{{ report.debt_amount or '' }}">
+                                        <label for="debtAmount">قيمة المديونية</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="date" name="debt_date" class="form-control" id="debtDate" placeholder="تاريخ المديونية" value="{{ report.debt_date.strftime('%Y-%m-%d') if report.debt_date else '' }}">
+                                        <label for="debtDate">تاريخ المديونية</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- الوصف والملفات -->
+                        <div class="card bg-light border-0 p-4 mb-4">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-file-alt text-primary me-2"></i>
+                                وصف البلاغ والملفات المرفقة
+                            </h5>
+                            <div class="form-group mb-3">
+                                <label for="description" class="form-label">وصف البلاغ</label>
+                                <textarea name="description" class="form-control" id="description" rows="5" placeholder="اكتب تفاصيل البلاغ هنا..." required>{{ report.description or '' }}</textarea>
+                                <div class="invalid-feedback">
+                                    يرجى كتابة وصف للبلاغ
+                                </div>
+                            </div>
+                            
+                            {% if report.media_files %}
+                            <div class="form-group mb-3">
+                                <label class="form-label">الملفات المرفقة الحالية</label>
+                                <div class="row g-3">
+                                    {% for file in report.media_files.split('|') %}
+                                    <div class="col-md-4">
+                                        <div class="card attachment-card">
+                                            <div class="card-body p-2 text-center">
+                                                <a href="{{ url_for('uploads', filename=file) }}" target="_blank" class="attachment-link">
+                                                    {% if file.lower().endswith(('png', 'jpg', 'jpeg', 'gif', 'webp')) %}
+                                                    <img src="{{ url_for('uploads', filename=file) }}" class="img-thumbnail attachment-preview" alt="مرفق">
+                                                    {% else %}
+                                                    <i class="fas fa-file-alt fa-3x text-primary"></i>
+                                                    {% endif %}
+                                                    <div class="mt-2 text-truncate">{{ file }}</div>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="form-check mt-3">
+                                    <input class="form-check-input" type="checkbox" name="delete_files" id="deleteFiles">
+                                    <label class="form-check-label" for="deleteFiles">
+                                        حذف جميع الملفات المرفقة
+                                    </label>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="form-group">
+                                <label for="media_files" class="form-label">إضافة ملفات جديدة (اختياري)</label>
+                                <input type="file" name="media_files" class="form-control" id="media_files" multiple>
+                                <div class="form-text">
+                                    يمكنك إرفاق صور أو مستندات متعلقة بالبلاغ (الحد الأقصى: 5 ملفات، 16 ميجابايت)
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- زر الإرسال -->
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save me-2"></i>
+                                حفظ التعديلات
+                            </button>
+                            <a href="{{ url_for('view_report', report_id=report.id) }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>
+                                إلغاء
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // تبديل عرض معلومات المديونية بناءً على نوع البلاغ
+    document.querySelector('select[name="type"]').addEventListener('change', function() {
+        var debtInfo = document.querySelector('.debt-info');
+        if (this.value === 'debt') {
+            debtInfo.style.display = 'block';
+        } else {
+            debtInfo.style.display = 'none';
+        }
+    });
+
+    // إضافة معلومات نصاب جديد مع تأثير حركي
+    function addScammerInfo() {
+        var container = document.querySelector('.scammer-info');
+        var newRow = document.createElement('div');
+        newRow.className = 'row g-3 mt-3 new-scammer-info';
+        newRow.innerHTML = `
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input type="text" name="scammer_name" class="form-control" placeholder="اسم النصاب">
+                    <label>اسم النصاب</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input type="text" name="scammer_phone" class="form-control" placeholder="رقم الهاتف">
+                    <label>رقم الهاتف</label>
+                </div>
+            </div>
+            <div class="col-12 text-end">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentNode.parentNode.remove()">
+                    <i class="fas fa-trash-alt me-1"></i> حذف
+                </button>
+            </div>
+        `;
+        
+        // إضافة الصف الجديد قبل زر الإضافة
+        container.insertBefore(newRow, container.querySelector('button'));
+        
+        // تأثير حركي
+        newRow.style.opacity = '0';
+        setTimeout(() => {
+            newRow.style.transition = 'opacity 0.5s';
+            newRow.style.opacity = '1';
+        }, 10);
+    }
+
+    // إضافة معلومات محفظة جديدة مع تأثير حركي
+    function addWalletInfo() {
+        var container = document.querySelector('.wallet-info');
+        var newRow = document.createElement('div');
+        newRow.className = 'row g-3 mt-3 new-wallet-info';
+        newRow.innerHTML = `
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input type="text" name="wallet_address" class="form-control" placeholder="عنوان المحفظة">
+                    <label>عنوان المحفظة</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input type="text" name="network_type" class="form-control" placeholder="نوع الشبكة">
+                    <label>نوع الشبكة</label>
+                </div>
+            </div>
+            <div class="col-12 text-end">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentNode.parentNode.remove()">
+                    <i class="fas fa-trash-alt me-1"></i> حذف
+                </button>
+            </div>
+        `;
+        
+        // إضافة الصف الجديد قبل زر الإضافة
+        container.insertBefore(newRow, container.querySelector('button'));
+        
+        // تأثير حركي
+        newRow.style.opacity = '0';
+        setTimeout(() => {
+            newRow.style.transition = 'opacity 0.5s';
+            newRow.style.opacity = '1';
+        }, 10);
+    }
+    
+    // إضافة حقل مخصص جديد
+    function addCustomField() {
+        var container = document.getElementById('customFieldsContainer');
+        var fieldIndex = document.querySelectorAll('.custom-field-row').length;
+        var newRow = document.createElement('div');
+        newRow.className = 'row g-3 mt-3 custom-field-row';
+        newRow.innerHTML = `
+            <div class="col-md-5">
+                <div class="form-floating">
+                    <input type="text" name="custom_field_name_${fieldIndex}" class="form-control" placeholder="اسم الحقل" required>
+                    <label>اسم الحقل</label>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="form-floating">
+                    <input type="text" name="custom_field_value_${fieldIndex}" class="form-control" placeholder="قيمة الحقل" required>
+                    <label>قيمة الحقل</label>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-center">
+                <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="this.closest('.custom-field-row').remove()">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(newRow);
+        
+        // تأثير حركي
+        newRow.style.opacity = '0';
+        setTimeout(() => {
+            newRow.style.transition = 'opacity 0.5s';
+            newRow.style.opacity = '1';
+        }, 10);
+    }
+
+    // تفعيل التحقق من صحة النموذج
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
+{% endblock %}
