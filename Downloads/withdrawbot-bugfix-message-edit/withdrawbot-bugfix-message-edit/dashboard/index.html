@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <!-- القائمة العلوية -->
+    <nav class="bg-gray-800 text-white">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <a href="#" class="px-3 py-2">الرئيسية</a>
+                    <a href="#" class="px-3 py-2">إدارة الأكواد</a>
+                    <a href="#" class="px-3 py-2">المستخدمين</a>
+                    <a href="#" class="px-3 py-2">الإعدادات</a>
+                </div>
+                <div>
+                    <span>لوحة التحكم</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- لوحة المعلومات -->
+    <div class="max-w-7xl mx-auto mt-6 px-4">
+        <h2 class="text-2xl font-bold mb-6">لوحة المعلومات</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <!-- عدد المستخدمين -->
+            <div class="bg-blue-500 text-white rounded-lg p-6">
+                <h3 class="text-lg mb-2">عدد المستخدمين</h3>
+                <p class="text-3xl font-bold">1</p>
+            </div>
+            
+            <!-- عدد الأكواد -->
+            <div class="bg-green-500 text-white rounded-lg p-6">
+                <h3 class="text-lg mb-2">عدد الأكواد</h3>
+                <p class="text-3xl font-bold">3</p>
+            </div>
+            
+            <!-- العمليات اليوم -->
+            <div class="bg-teal-500 text-white rounded-lg p-6">
+                <h3 class="text-lg mb-2">العمليات اليوم</h3>
+                <p class="text-3xl font-bold">0</p>
+            </div>
+            
+            <!-- إجمالي العمولات -->
+            <div class="bg-yellow-500 text-white rounded-lg p-6">
+                <h3 class="text-lg mb-2">إجمالي العمولات</h3>
+                <p class="text-3xl font-bold">0</p>
+            </div>
+        </div>
+
+        <!-- إدارة الأكواد -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">إدارة الأكواد</h2>
+                <button class="bg-blue-500 text-white px-4 py-2 rounded-md">
+                    إضافة كود جديد
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-right">الكود</th>
+                            <th class="px-6 py-3 text-right">الوصف</th>
+                            <th class="px-6 py-3 text-right">الحالة</th>
+                            <th class="px-6 py-3 text-right">العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        <tr>
+                            <td class="px-6 py-4">محمد احمد</td>
+                            <td class="px-6 py-4">عميل</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full">نشط</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <button class="text-yellow-500 px-2">تعديل</button>
+                                <button class="text-red-500 px-2">حذف</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- المستخدمين -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 class="text-xl font-bold mb-6">المستخدمين</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-right">معرف المستخدم</th>
+                            <th class="px-6 py-3 text-right">الاسم</th>
+                            <th class="px-6 py-3 text-right">عدد العمليات</th>
+                            <th class="px-6 py-3 text-right">تاريخ التسجيل</th>
+                            <th class="px-6 py-3 text-right">الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- الإعدادات -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-6">الإعدادات</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 mb-2">نسبة العمولة (%)</label>
+                    <input type="number" value="2.5" class="w-full p-2 border rounded-md">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">الحد الأدنى للتحويل</label>
+                    <input type="number" class="w-full p-2 border rounded-md">
+                </div>
+
+                <button class="bg-blue-500 text-white px-6 py-2 rounded-md">
+                    حفظ الإعدادات
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // دوال التفاعل
+        function addCode() {
+            // إضافة كود جديد
+        }
+
+        function updateCode(id) {
+            // تحديث كود
+        }
+
+        function deleteCode(id) {
+            // حذف كود
+        }
+
+        function saveSettings() {
+            // حفظ الإعدادات
+        }
+    </script>
+</body>
+</html>

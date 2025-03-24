@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم | بوت التحويلات</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <!-- القائمة العلوية -->
+    <nav class="bg-gray-800 text-white">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <a href="/" class="px-3 py-2">الرئيسية</a>
+                    <a href="/transfers" class="px-3 py-2">العمليات</a>
+                    <a href="#codes" class="px-3 py-2">إدارة الأكواد</a>
+                    <a href="#settings" class="px-3 py-2">الإعدادات</a>
+                </div>
+                <div>
+                    <span>لوحة التحكم</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- لوحة المعلومات -->
+    <div class="max-w-7xl mx-auto mt-6 px-4">
+        <!-- إحصائيات المستخدمين -->
+        <div class="mb-8">
+            <h2 class="text-xl font-bold mb-4">إحصائيات المستخدمين</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="bg-blue-500 text-white rounded-lg p-6">
+                    <h3 class="text-lg mb-2">إجمالي المستخدمين</h3>
+                    <p class="text-3xl font-bold">{{ stats.total_users }}</p>
+                    <p class="text-sm mt-2">نشط: {{ stats.active_users }}</p>
+                </div>
+                
+                <div class="bg-green-500 text-white rounded-lg p-6">
+                    <h3 class="text-lg mb-2">مستخدمين جدد اليوم</h3>
+                    <p class="text-3xl font-bold">{{ stats.new_users_today }}</p>
+                </div>
+                
+                <div class="bg-purple-500 text-white rounded-lg p-6">
+                    <h3 class="text-lg mb-2">نشط اليوم</h3>
+                    <p class="text-3xl font-bold">{{ stats.active_users_today }}</p>
+                </div>
+                
+                <div class="bg-indigo-500 text-white rounded-lg p-6">
+                    <h3 class="text-lg mb-2">معدل النشاط</h3>
+                    <p class="text-3xl font-bold">{{ "%.1f"|format(stats.active_users_today / stats.total_users * 100) if stats.total_users > 0 else 0 }}%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- إحصائيات الأكواد -->
+        <div class="mb-8">
+            <h2 class="text-xl font-bold mb-4">إحصائيات أكواد التسجيل</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="bg-green-500 text-white rounded-lg p-6">
+                    <h3 class="text-lg mb-2">إجمالي الأكواد</h3>
+                    <p class="text-3xl font-bold">{{ stats.total_codes }}</p>
+                    <p class="text-sm mt-2">نشط: {{ stats.active_codes }}</p>
+                </div>
+                
+                <div class="bg-blue-500 text-white rounded-lg p-6">
+                    <h3 class="text-lg mb-2">أكواد جديدة اليوم</h3>
+                    <p class="text-3xl font-bold">{{ stats.new_codes_today }}</p>
+                </div>
+                
+                <div class="bg-yellow-500 text-white rounded-lg p-6">
+                    <h3 class="text-lg mb-2">إجمالي الاستخدام</h3>
+                    <p class="text-3xl font-bold">{{ stats.total_code_uses }}</p>
+                </div>
+                
+                <div class="bg-purple-500 text-white rounded-lg p-6">
+                    <h3 class="text-lg mb-2">معدل الاستخدام</h3>
+                    <p class="text-3xl font-bold">{{ "%.1f"|format(stats.total_code_uses / stats.total_codes) if stats.total_codes > 0 else 0 }}</p>
+                    <p class="text-sm mt-2">لكل كود</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- إحصائيات العمليات -->
+        <div class="mb-8">
+            <h2 class="text-xl font-bold mb-4">إحصائيات العمليات</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">العمليات المكتملة</h3>
+                        <span class="text-green-500 text-2xl font-bold">{{ stats.completed_transfers }}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <p>اليوم: {{ stats.completed_today }}</p>
+                        <p>المبلغ: {{ "%.2f"|format(stats.total_amount) }} USDT</p>
+                        <p>معدل العملية: {{ "%.2f"|format(stats.avg_amount) }} USDT</p>
+                    </div>
+                    <a href="/transfers?status=completed" class="text-green-500 hover:text-green-600">عرض التفاصيل →</a>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">العمليات المعلقة</h3>
+                        <span class="text-yellow-500 text-2xl font-bold">{{ stats.pending_transfers }}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <p>اليوم: {{ stats.today_operations }}</p>
+                    </div>
+                    <a href="/transfers?status=pending" class="text-yellow-500 hover:text-yellow-600">عرض التفاصيل →</a>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">العمليات المرفوضة</h3>
+                        <span class="text-red-500 text-2xl font-bold">{{ stats.rejected_transfers }}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <p>نسبة الرفض: {{ "%.1f"|format(stats.rejected_transfers / stats.total_transfers * 100) if stats.total_transfers > 0 else 0 }}%</p>
+                    </div>
+                    <a href="/transfers?status=rejected" class="text-red-500 hover:text-red-600">عرض التفاصيل →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- إحصائيات العملات -->
+        <div class="mb-8">
+            <h2 class="text-xl font-bold mb-4">إحصائيات حسب العملة</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {% for stat in stats.currency_stats %}
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">{{ stat.currency }}</h3>
+                        <span class="text-blue-500 text-2xl font-bold">{{ stat.total_transfers }}</span>
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        <p>إجمالي المبلغ: {{ "%.2f"|format(stat.total_amount) }} USDT</p>
+                        <p>معدل العملية: {{ "%.2f"|format(stat.total_amount / stat.total_transfers) if stat.total_transfers > 0 else 0 }} USDT</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- إدارة الأكواد -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">إدارة الأكواد</h2>
+                <div class="flex space-x-4 space-x-reverse">
+                    <button onclick="document.getElementById('importFile').click()" class="bg-green-500 text-white px-4 py-2 rounded-md">
+                        استيراد من Excel
+                    </button>
+                    <a href="/export-codes" class="bg-blue-500 text-white px-4 py-2 rounded-md inline-block">
+                        تصدير إلى Excel
+                    </a>
+                    <button onclick="showCodeModal()" class="bg-blue-500 text-white px-4 py-2 rounded-md">
+                        إضافة كود جديد
+                    </button>
+                </div>
+            </div>
+            
+            <!-- نموذج استيراد الملف (مخفي) -->
+            <input type="file" id="importFile" accept=".xlsx" class="hidden" onchange="importCodes(this)">
+
+            <!-- رسالة النجاح/الخطأ -->
+            <div id="importMessage" class="hidden mb-4"></div>
+            
+            {% if error %}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <strong class="font-bold">خطأ!</strong>
+                <span class="block sm:inline">{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-right">الكود</th>
+                            <th class="px-6 py-3 text-right">الوصف</th>
+                            <th class="px-6 py-3 text-right">الحالة</th>
+                            <th class="px-6 py-3 text-right">عدد الاستخدام</th>
+                            <th class="px-6 py-3 text-right">تاريخ الإنشاء</th>
+                            <th class="px-6 py-3 text-right">إجمالي المبالغ</th>
+                            <th class="px-6 py-3 text-right">العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="codesList" class="divide-y">
+                        {% for code in codes %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-medium">{{ code.code }}</td>
+                            <td class="px-6 py-4">{{ code.description }}</td>
+                            <td class="px-6 py-4">
+                                <span class="px-3 py-1 {% if code.status == 'active' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %} rounded-full text-sm">
+                                    {{ '✅ نشط' if code.status == 'active' else '❌ متوقف' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center">
+                                    <span class="font-medium">{{ code.used_count }}</span>
+                                    {% if code.max_uses > 0 %}
+                                    <span class="text-gray-500 text-sm mr-1">/ {{ code.max_uses }}</span>
+                                    <div class="w-20 bg-gray-200 rounded-full h-2 mr-2">
+                                        <div class="bg-blue-500 rounded-full h-2" style="width: {{ (code.used_count / code.max_uses * 100)|round|string + '%' }}"></div>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-gray-500 text-sm mr-1">/ ∞</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-gray-500">{{ code.created_at }}</td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col">
+                                    <span class="font-medium">{{ '%0.2f'|format(code.total_usdt|default(0)) }} USDT</span>
+                                    <span class="text-sm text-gray-500">{{ '%0.2f'|format(code.total_amount|default(0)) }} USD</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex space-x-2 space-x-reverse">
+                                    <button onclick="editCode('{{ code.code }}')" class="text-yellow-500 hover:text-yellow-600 px-2 py-1 rounded">
+                                        <span class="text-sm">✏️ تعديل</span>
+                                    </button>
+                                    {% if code.status == 'active' %}
+                                    <button onclick="deactivateCode('{{ code.code }}')" class="text-orange-500 hover:text-orange-600 px-2 py-1 rounded">
+                                        <span class="text-sm">🚫 إيقاف</span>
+                                    </button>
+                                    {% else %}
+                                    <button onclick="activateCode('{{ code.code }}')" class="text-green-500 hover:text-green-600 px-2 py-1 rounded">
+                                        <span class="text-sm">✅ تفعيل</span>
+                                    </button>
+                                    {% endif %}
+                                    <button onclick="deleteCode('{{ code.code }}')" class="text-red-500 hover:text-red-600 px-2 py-1 rounded">
+                                        <span class="text-sm">🗑️ حذف</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- إدارة أسعار الصرف -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">إدارة أسعار الصرف</h2>
+                <button onclick="showAddRateModal()" class="bg-blue-500 text-white px-4 py-2 rounded-md">
+                    إضافة عملة جديدة
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-right">العملة</th>
+                            <th class="px-6 py-3 text-right">سعر الصرف (USDT)</th>
+                            <th class="px-6 py-3 text-right">آخر تحديث</th>
+                            <th class="px-6 py-3 text-right">العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exchangeRatesList" class="divide-y">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Modal إضافة/تعديل سعر الصرف -->
+        <div id="rateModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+            <div class="bg-white p-6 rounded-lg w-96">
+                <h3 id="rateModalTitle" class="text-lg font-bold mb-4">إضافة عملة جديدة</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">رمز العملة</label>
+                        <input type="text" id="currencyCode" class="w-full p-2 border rounded-md" placeholder="مثال: SAR">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">سعر الصرف (USDT)</label>
+                        <input type="number" id="exchangeRate" class="w-full p-2 border rounded-md" step="0.0001">
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button onclick="hideRateModal()" class="px-4 py-2 border rounded-md">إلغاء</button>
+                        <button onclick="saveExchangeRate()" class="bg-blue-500 text-white px-4 py-2 rounded-md">حفظ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- الإعدادات -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-6">الإعدادات</h2>
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">الحد الفاصل للعمولة الثابتة (USDT)</label>
+                        <input type="number" id="fixedFeeThreshold" class="w-full p-2 border rounded-md" step="0.1">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">قيمة العمولة الثابتة (USDT)</label>
+                        <input type="number" id="fixedFeeAmount" class="w-full p-2 border rounded-md" step="0.1">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">نسبة العمولة للمبالغ الكبيرة (%)</label>
+                        <input type="number" id="percentageFee" class="w-full p-2 border rounded-md" step="0.1">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">الحد الأدنى للسحب (USDT)</label>
+                        <input type="number" id="minWithdrawal" class="w-full p-2 border rounded-md" step="0.1">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">الحد الأعلى للسحب (USDT)</label>
+                        <input type="number" id="maxWithdrawal" class="w-full p-2 border rounded-md" step="0.1">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button onclick="saveSettings()" class="bg-blue-500 text-white px-6 py-2 rounded-md">
+                        حفظ الإعدادات
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal إضافة/تعديل كود -->
+    <div id="codeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-6 rounded-lg w-[500px]">
+            <h3 id="codeModalTitle" class="text-xl font-bold mb-6">إضافة كود جديد</h3>
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">الكود</label>
+                        <input type="text" id="codeInput" class="w-full p-2 border rounded-md" dir="ltr">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">الحالة</label>
+                        <select id="codeStatus" class="w-full p-2 border rounded-md">
+                            <option value="active">نشط</option>
+                            <option value="inactive">متوقف</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">الوصف</label>
+                    <input type="text" id="codeDesc" class="w-full p-2 border rounded-md" placeholder="وصف اختياري للكود">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">الحد الأقصى للاستخدام</label>
+                        <div class="flex items-center">
+                            <input type="number" id="codeMaxUses" class="w-full p-2 border rounded-md" min="-1" value="-1">
+                            <span class="text-gray-500 text-sm mr-2">(-1 = غير محدود)</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">تاريخ انتهاء الصلاحية</label>
+                        <input type="datetime-local" id="codeExpiry" class="w-full p-2 border rounded-md" dir="ltr">
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-2 space-x-reverse">
+                    <button onclick="hideCodeModal()" class="px-4 py-2 border rounded-md hover:bg-gray-50">
+                        إلغاء
+                    </button>
+                    <button onclick="saveCode()" class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600">
+                        <span id="saveCodeButtonText">إضافة</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        async function importCodes(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/import-codes', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                const messageDiv = document.getElementById('importMessage');
+                messageDiv.classList.remove('hidden');
+                
+                if (result.success) {
+                    messageDiv.className = 'bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4';
+                    messageDiv.innerHTML = `
+                        <strong class="font-bold">تم!</strong>
+                        <span class="block sm:inline">${result.message}</span>
+                        ${result.errors.length > 0 ? `
+                            <ul class="list-disc list-inside mt-2">
+                                ${result.errors.map(error => `<li>${error}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+                    `;
+                    
+                    // تحديث الصفحة بعد ثانيتين
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    messageDiv.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4';
+                    messageDiv.innerHTML = `
+                        <strong class="font-bold">خطأ!</strong>
+                        <span class="block sm:inline">${result.error}</span>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('حدث خطأ أثناء استيراد الملف');
+            }
+            
+            // إعادة تعيين حقل الملف
+            input.value = '';
+        }
+    </script>
+</body>
+</html>
