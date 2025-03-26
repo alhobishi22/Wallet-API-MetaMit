@@ -65,16 +65,15 @@
                                 <p>في قسم <strong>Body</strong>، اختر <strong>Templates</strong> وأدخل التنسيق التالي <span class="text-danger">بالضبط</span>:</p>
                                 <div class="alert alert-secondary">
 <pre>{
-  "text": "{msg}",
-  "sender": "{sender}"
+  "text": "From: {sender}<br>{msg}"
 }</pre>
                                 </div>
                                 <div class="alert alert-warning">
                                     <p><strong>ملاحظات هامة:</strong></p>
                                     <ul>
-                                        <li>تأكد من استخدام <code>"text"</code> وليس <code>"msg"</code> كما هو موضح أعلاه.</li>
-                                        <li>تأكد من وجود علامات الاقتباس المزدوجة <code>"</code> حول الكلمات <code>text</code> و <code>sender</code>.</li>
-                                        <li>تأكد من وجود الفاصلة <code>,</code> بين السطرين.</li>
+                                        <li>استخدم التنسيق بالضبط كما هو موضح في الصورة أعلاه.</li>
+                                        <li>تأكد من وجود <code>&lt;br&gt;</code> بين المرسل والرسالة.</li>
+                                        <li>تأكد من وجود علامات الاقتباس المزدوجة <code>"</code> حول <code>text</code> وقيمتها.</li>
                                         <li>يجب أن تكون الأقواس <code>{ }</code> بالضبط كما هو موضح.</li>
                                     </ul>
                                 </div>

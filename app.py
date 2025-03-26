@@ -475,35 +475,73 @@ def receive_sms():
         if request.method == 'POST':
             # Get SMS data from request
             sms_text = None
-            sender = None
             
-            # Try different ways to get the data
+            # Try to get the formatted text from JSON (as shown in the screenshot)
             if request.is_json:
                 data = request.get_json()
                 print(f"Processing JSON data: {data}")
-                sms_text = data.get('text', '')
-                if not sms_text:
-                    sms_text = data.get('msg', '')
-                sender = data.get('sender', '')
-            else:
-                # Form data
-                print(f"Processing form data: {request.form}")
-                sms_text = request.form.get('msg', '')
-                if not sms_text:
-                    sms_text = request.form.get('text', '')
-                sender = request.form.get('sender', '')
                 
-                # Check if data is in the request body but not parsed as form
+                if 'text' in data:
+                    formatted_text = data.get('text', '')
+                    print(f"Found formatted text: {formatted_text}")
+                    
+                    # The format should be "From: {sender}<br>{msg}"
+                    if '<br>' in formatted_text:
+                        parts = formatted_text.split('<br>', 1)
+                        if len(parts) == 2 and parts[0].startswith('From:'):
+                            sender = parts[0].replace('From:', '').strip()
+                            sms_text = parts[1].strip()
+                            print(f"Successfully parsed formatted text - Sender: '{sender}', Text: '{sms_text}'")
+                        else:
+                            print(f"Formatted text doesn't match expected format: {formatted_text}")
+                    else:
+                        print(f"No <br> found in formatted text: {formatted_text}")
+            
+            # If we couldn't extract from the formatted text, try other methods
+            if not sms_text:
+                # Check form data
+                if request.form:
+                    print(f"Processing form data: {request.form}")
+                    sms_text = request.form.get('msg', '')
+                    if not sms_text:
+                        sms_text = request.form.get('text', '')
+                    sender = request.form.get('sender', '')
+                    
+                    print(f"Extracted from form - Sender: '{sender}', Text: '{sms_text}'")
+                
+                # Check URL parameters
+                if not sms_text:
+                    sms_text = request.args.get('msg', '')
+                    if not sms_text:
+                        sms_text = request.args.get('text', '')
+                    if not sender:
+                        sender = request.args.get('sender', '')
+                    
+                    print(f"Extracted from URL params - Sender: '{sender}', Text: '{sms_text}'")
+                
+                # Check if data is in the request body but not parsed
                 if not sms_text and request.data:
                     try:
+                        # Try to parse as JSON
                         body_data = json.loads(request.data.decode('utf-8'))
-                        print(f"Processing raw body data: {body_data}")
-                        sms_text = body_data.get('text', '') or body_data.get('msg', '')
-                        sender = body_data.get('sender', '')
+                        print(f"Processing raw body data as JSON: {body_data}")
+                        
+                        if 'text' in body_data:
+                            formatted_text = body_data.get('text', '')
+                            if '<br>' in formatted_text:
+                                parts = formatted_text.split('<br>', 1)
+                                if len(parts) == 2 and parts[0].startswith('From:'):
+                                    sender = parts[0].replace('From:', '').strip()
+                                    sms_text = parts[1].strip()
+                                    print(f"Successfully parsed formatted text from raw JSON - Sender: '{sender}', Text: '{sms_text}'")
+                        else:
+                            sms_text = body_data.get('msg', '')
+                            sender = body_data.get('sender', '')
+                            print(f"Extracted from raw JSON - Sender: '{sender}', Text: '{sms_text}'")
                     except Exception as e:
                         print(f"Error parsing request body: {e}")
             
-            # Log received data
+            # Log final extracted data
             print(f"Final extracted data - Sender: '{sender}', Text: '{sms_text}'")
             
             if not sms_text:
