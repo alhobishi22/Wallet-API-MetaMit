@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import uuid
 
 db = SQLAlchemy()
 
@@ -20,10 +21,24 @@ class Transaction(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.now)
     created_at = db.Column(db.DateTime, default=datetime.now)
     
+    # خصائص افتراضية للأعمدة الجديدة
+    @property
+    def transaction_id(self):
+        """Get a unique transaction ID."""
+        # إذا لم يكن هناك عمود transaction_id في قاعدة البيانات، استخدم معرف فريد مبني على معرف المعاملة
+        return f"TX{self.id:06d}"
+    
+    @property
+    def is_confirmed(self):
+        """Check if transaction is confirmed."""
+        # استخدم القيمة المحسوبة في الذاكرة إذا كانت موجودة
+        return getattr(self, 'is_confirmed_value', False)
+    
     def to_dict(self):
         """Convert transaction to dictionary."""
         return {
             'id': self.id,
+            'transaction_id': self.transaction_id,
             'wallet': self.wallet,
             'type': self.type,
             'amount': self.amount,
@@ -33,13 +48,14 @@ class Transaction(db.Model):
             'balance': self.balance,
             'balance_currency': self.balance_currency,
             'raw_message': self.raw_message,
-            'timestamp': self.timestamp.strftime('%Y-%m-%d %H:%M:%S') if self.timestamp else None,
-            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'is_confirmed': self.is_confirmed
         }
     
     @classmethod
     def from_dict(cls, data):
-        """Create a transaction from dictionary data."""
+        """Create transaction from dictionary."""
         transaction = cls(
             wallet=data.get('wallet'),
             type=data.get('type'),
@@ -53,11 +69,14 @@ class Transaction(db.Model):
         )
         
         # Handle timestamp if provided
-        timestamp_str = data.get('timestamp')
-        if timestamp_str:
+        timestamp = data.get('timestamp')
+        if timestamp:
             try:
-                transaction.timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
-            except ValueError:
+                if isinstance(timestamp, str):
+                    transaction.timestamp = datetime.fromisoformat(timestamp)
+                else:
+                    transaction.timestamp = timestamp
+            except (ValueError, TypeError):
                 # If timestamp format is invalid, use current time
                 transaction.timestamp = datetime.now()
         

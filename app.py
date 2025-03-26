@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
 import os
 import re
 import json
@@ -194,9 +194,21 @@ def parse_sms(sms_text):
 def save_transactions(transactions):
     """Save transactions to the database."""
     count = 0
-    for transaction_data in transactions:
-        # Create a new Transaction object
-        transaction = Transaction.from_dict(transaction_data)
+    
+    # Get the latest transaction for each wallet/currency to check balance consistency
+    latest_transactions = {}
+    for wallet in WALLET_TYPES:
+        latest_transactions[wallet] = {}
+        for currency in ['YER', 'SAR', 'USD']:
+            latest_tx = Transaction.query.filter_by(wallet=wallet, currency=currency).order_by(Transaction.timestamp.desc()).first()
+            if latest_tx:
+                latest_transactions[wallet][currency] = latest_tx.balance
+            else:
+                latest_transactions[wallet][currency] = 0
+    
+    for tx_data in transactions:
+        # Create a new transaction object
+        transaction = Transaction.from_dict(tx_data)
         
         # Add to database
         db.session.add(transaction)
@@ -333,31 +345,95 @@ def index():
     )
 
 @app.route('/wallet/<wallet_name>')
-def wallet_view(wallet_name):
-    """Render the wallet-specific page."""
+def wallet(wallet_name):
+    """Display wallet details and transactions."""
     if wallet_name not in WALLET_TYPES:
-        flash(f'محفظة غير معروفة: {wallet_name}', 'error')
+        flash('المحفظة غير موجودة', 'danger')
         return redirect(url_for('index'))
     
-    all_transactions = load_transactions()
+    # Get transactions for this wallet - sort by timestamp ascending (oldest first)
+    transactions = Transaction.query.filter_by(wallet=wallet_name).order_by(Transaction.timestamp.asc(), Transaction.id.asc()).all()
     
-    # Filter transactions for the specific wallet
-    wallet_transactions = [t for t in all_transactions if t.get('wallet') == wallet_name]
+    print(f"===== تحليل تأكيد المعاملات لمحفظة {wallet_name} =====")
     
-    # Get summary for all wallets but highlight the current one
-    summary = generate_transaction_summary(all_transactions)
+    # Initialize dictionary to store confirmation status
+    confirmed_status = {}
     
-    # Generate charts specific to this wallet
-    wallet_charts = generate_wallet_charts(wallet_transactions, wallet_name)
+    # Group transactions by currency
+    transactions_by_currency = {}
+    for tx in transactions:
+        if tx.currency not in transactions_by_currency:
+            transactions_by_currency[tx.currency] = []
+        transactions_by_currency[tx.currency].append(tx)
     
-    return render_template(
-        'wallet.html',
-        wallet_name=wallet_name,
-        transactions=wallet_transactions,
-        summary=summary,
-        charts=wallet_charts,
-        now=datetime.now()
-    )
+    # Process each currency separately
+    for currency, txs in transactions_by_currency.items():
+        print(f"\n----- العملة: {currency} -----")
+        
+        # First transaction for each currency is not confirmed (can't verify)
+        if len(txs) > 0:
+            first_tx = txs[0]
+            confirmed_status[first_tx.id] = False
+            print(f"معاملة {first_tx.transaction_id}: أول معاملة للعملة {currency} - غير مؤكدة")
+        
+        # Process remaining transactions
+        for i in range(1, len(txs)):
+            current_tx = txs[i]
+            prev_tx = txs[i-1]
+            
+            tx_code = getattr(current_tx, 'transaction_id', f"TX{current_tx.id}")
+            
+            # Get current balance and previous balance
+            try:
+                current_balance = float(current_tx.balance)
+                prev_balance = float(prev_tx.balance)
+                amount = float(current_tx.amount)
+                
+                # Calculate expected balance based on previous transaction
+                if current_tx.type == 'credit':
+                    expected_balance = prev_balance + amount
+                else:  # debit
+                    expected_balance = prev_balance - amount
+                
+                # Round values to prevent floating point precision issues
+                current_balance = round(current_balance, 2)
+                expected_balance = round(expected_balance, 2)
+                
+                # Compare with a small tolerance (0.01) as in the account-deteals project
+                if abs(current_balance - expected_balance) <= 0.01:
+                    confirmed_status[current_tx.id] = True
+                    print(f"معاملة {tx_code}: مؤكدة - الرصيد المتوقع {expected_balance:.2f} يتطابق مع الرصيد الفعلي {current_balance:.2f}")
+                else:
+                    confirmed_status[current_tx.id] = False
+                    print(f"معاملة {tx_code}: غير مؤكدة - الرصيد المتوقع {expected_balance:.2f} لا يتطابق مع الرصيد الفعلي {current_balance:.2f}")
+            
+            except (ValueError, TypeError):
+                confirmed_status[current_tx.id] = False
+                print(f"معاملة {tx_code}: غير مؤكدة - خطأ في تحويل الرصيد إلى رقم")
+    
+    # Sort transactions back to descending order for display
+    transactions.sort(key=lambda x: x.timestamp, reverse=True)
+    
+    # Generate transaction summary
+    summary = generate_transaction_summary(transactions)
+    
+    # Generate charts if there are transactions
+    charts = None
+    if transactions:
+        charts = generate_charts(transactions)
+    
+    # Add a no-cache header to ensure the browser doesn't cache the response
+    response = make_response(render_template('wallet.html', 
+                                            wallet_name=wallet_name, 
+                                            transactions=transactions, 
+                                            summary=summary, 
+                                            charts=charts, 
+                                            confirmed_status=confirmed_status,
+                                            now=datetime.now()))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -390,7 +466,7 @@ def upload_wallet(wallet_name):
     
     if not sms_text:
         flash('لم يتم توفير نص الرسائل', 'error')
-        return redirect(url_for('wallet_view', wallet_name=wallet_name))
+        return redirect(url_for('wallet', wallet_name=wallet_name))
     
     # Add the wallet name to the beginning of each message if not already there
     lines = sms_text.split('\n')
@@ -411,12 +487,12 @@ def upload_wallet(wallet_name):
     
     if not transactions:
         flash('لم يتم العثور على معاملات صالحة في نص الرسائل', 'warning')
-        return redirect(url_for('wallet_view', wallet_name=wallet_name))
+        return redirect(url_for('wallet', wallet_name=wallet_name))
     
     num_saved = save_transactions(transactions)
     flash(f'تمت معالجة {num_saved} معاملات بنجاح', 'success')
     
-    return redirect(url_for('wallet_view', wallet_name=wallet_name))
+    return redirect(url_for('wallet', wallet_name=wallet_name))
 
 @app.route('/clear', methods=['POST'])
 def clear_data():
@@ -442,7 +518,7 @@ def clear_wallet_data(wallet_name):
     db.session.commit()
     flash(f'تم مسح جميع بيانات معاملات محفظة {wallet_name}', 'success')
     
-    return redirect(url_for('wallet_view', wallet_name=wallet_name))
+    return redirect(url_for('wallet', wallet_name=wallet_name))
 
 @app.route('/export', methods=['GET'])
 def export_data():
@@ -535,10 +611,10 @@ def receive_sms():
                                     sender = parts[0].replace('From:', '').strip()
                                     sms_text = parts[1].strip()
                                     print(f"Successfully parsed formatted text from raw JSON - Sender: '{sender}', Text: '{sms_text}'")
-                        else:
-                            sms_text = body_data.get('msg', '')
-                            sender = body_data.get('sender', '')
-                            print(f"Extracted from raw JSON - Sender: '{sender}', Text: '{sms_text}'")
+                            else:
+                                sms_text = body_data.get('msg', '')
+                                sender = body_data.get('sender', '')
+                                print(f"Extracted from raw JSON - Sender: '{sender}', Text: '{sms_text}'")
                     except Exception as e:
                         print(f"Error parsing request body: {e}")
             

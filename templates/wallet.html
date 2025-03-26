@@ -232,6 +232,7 @@
                     <table class="table table-striped table-hover">
                         <thead>
                             <tr>
+                                <th>الرقم المميز</th>
                                 <th>النوع</th>
                                 <th>المبلغ</th>
                                 <th>العملة</th>
@@ -239,11 +240,15 @@
                                 <th>الطرف المقابل</th>
                                 <th>الرصيد</th>
                                 <th>التاريخ</th>
+                                <th>حالة التأكيد</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for transaction in transactions %}
                             <tr>
+                                <td>
+                                    <span class="badge bg-secondary">{{ transaction.transaction_id if transaction.transaction_id else 'غير متوفر' }}</span>
+                                </td>
                                 <td>
                                     <span class="{{ 'transaction-credit' if transaction.type == 'credit' else 'transaction-debit' }}">
                                         {{ 'إضافة' if transaction.type == 'credit' else 'خصم' }}
@@ -255,6 +260,17 @@
                                 <td>{{ transaction.counterparty if transaction.counterparty else '-' }}</td>
                                 <td>{{ transaction.balance|round(2) if transaction.balance else '-' }}</td>
                                 <td>{{ transaction.timestamp }}</td>
+                                <td>
+                                    {% if confirmed_status and transaction.id in confirmed_status and confirmed_status[transaction.id] %}
+                                        <span class="badge bg-success" title="الرصيد يتطابق مع العمليات السابقة">
+                                            <i class="fas fa-check-circle"></i> مؤكدة
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark" title="الرصيد لا يتطابق مع العمليات السابقة">
+                                            <i class="fas fa-exclamation-triangle"></i> غير مؤكدة
+                                        </span>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
