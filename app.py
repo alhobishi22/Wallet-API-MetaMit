@@ -475,6 +475,7 @@ def receive_sms():
         if request.method == 'POST':
             # Get SMS data from request
             sms_text = None
+            sender = None
             
             # Try to get the formatted text from JSON (as shown in the screenshot)
             if request.is_json:
@@ -551,6 +552,11 @@ def receive_sms():
                     'message': 'No SMS text provided'
                 }), 400
             
+            # إذا كان sender لا يزال None، استخدم قيمة افتراضية
+            if sender is None:
+                sender = "Unknown"
+                print(f"Using default sender: {sender}")
+            
             # Format the SMS in the expected format
             formatted_sms = f"From: {sender} \n{sms_text}"
             print(f"Formatted SMS: {formatted_sms}")
@@ -587,6 +593,10 @@ def receive_sms():
                     'status': 'error',
                     'message': 'No SMS text provided'
                 }), 400
+            
+            # إذا كان sender فارغًا، استخدم قيمة افتراضية
+            if not sender:
+                sender = "Unknown"
             
             # Format the SMS in the expected format
             formatted_sms = f"From: {sender} \n{sms_text}"
