@@ -44,16 +44,32 @@
                                 <ul class="list-group list-group-flush">
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                         <span>إجمالي الإضافات</span>
-                                        <span class="transaction-credit">{{ summary[wallet_name].YER.credits|round(2) }}</span>
+                                        <span class="transaction-credit">
+                                            {% if summary and wallet_name in summary and 'YER' in summary[wallet_name] %}
+                                                {{ summary[wallet_name].YER.credits|round(2) }}
+                                            {% else %}
+                                                0.00
+                                            {% endif %}
+                                        </span>
                                     </li>
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                         <span>إجمالي الخصومات</span>
-                                        <span class="transaction-debit">{{ summary[wallet_name].YER.debits|round(2) }}</span>
+                                        <span class="transaction-debit">
+                                            {% if summary and wallet_name in summary and 'YER' in summary[wallet_name] %}
+                                                {{ summary[wallet_name].YER.debits|round(2) }}
+                                            {% else %}
+                                                0.00
+                                            {% endif %}
+                                        </span>
                                     </li>
                                     <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
                                         <span>الرصيد الصافي</span>
-                                        <span class="{{ 'transaction-credit' if summary[wallet_name].YER.net >= 0 else 'transaction-debit' }}">
-                                            {{ summary[wallet_name].YER.net|round(2) }}
+                                        <span class="{% if summary and wallet_name in summary and 'YER' in summary[wallet_name] %}{{ 'transaction-credit' if summary[wallet_name].YER.net >= 0 else 'transaction-debit' }}{% else %}transaction-credit{% endif %}">
+                                            {% if summary and wallet_name in summary and 'YER' in summary[wallet_name] %}
+                                                {{ summary[wallet_name].YER.net|round(2) }}
+                                            {% else %}
+                                                0.00
+                                            {% endif %}
                                         </span>
                                     </li>
                                 </ul>
@@ -71,16 +87,32 @@
                                 <ul class="list-group list-group-flush">
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                         <span>إجمالي الإضافات</span>
-                                        <span class="transaction-credit">{{ summary[wallet_name].SAR.credits|round(2) }}</span>
+                                        <span class="transaction-credit">
+                                            {% if summary and wallet_name in summary and 'SAR' in summary[wallet_name] %}
+                                                {{ summary[wallet_name].SAR.credits|round(2) }}
+                                            {% else %}
+                                                0.00
+                                            {% endif %}
+                                        </span>
                                     </li>
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                         <span>إجمالي الخصومات</span>
-                                        <span class="transaction-debit">{{ summary[wallet_name].SAR.debits|round(2) }}</span>
+                                        <span class="transaction-debit">
+                                            {% if summary and wallet_name in summary and 'SAR' in summary[wallet_name] %}
+                                                {{ summary[wallet_name].SAR.debits|round(2) }}
+                                            {% else %}
+                                                0.00
+                                            {% endif %}
+                                        </span>
                                     </li>
                                     <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
                                         <span>الرصيد الصافي</span>
-                                        <span class="{{ 'transaction-credit' if summary[wallet_name].SAR.net >= 0 else 'transaction-debit' }}">
-                                            {{ summary[wallet_name].SAR.net|round(2) }}
+                                        <span class="{% if summary and wallet_name in summary and 'SAR' in summary[wallet_name] %}{{ 'transaction-credit' if summary[wallet_name].SAR.net >= 0 else 'transaction-debit' }}{% else %}transaction-credit{% endif %}">
+                                            {% if summary and wallet_name in summary and 'SAR' in summary[wallet_name] %}
+                                                {{ summary[wallet_name].SAR.net|round(2) }}
+                                            {% else %}
+                                                0.00
+                                            {% endif %}
                                         </span>
                                     </li>
                                 </ul>
@@ -98,16 +130,32 @@
                                 <ul class="list-group list-group-flush">
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                         <span>إجمالي الإضافات</span>
-                                        <span class="transaction-credit">{{ summary[wallet_name].USD.credits|round(2) }}</span>
+                                        <span class="transaction-credit">
+                                            {% if summary and wallet_name in summary and 'USD' in summary[wallet_name] %}
+                                                {{ summary[wallet_name].USD.credits|round(2) }}
+                                            {% else %}
+                                                0.00
+                                            {% endif %}
+                                        </span>
                                     </li>
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                         <span>إجمالي الخصومات</span>
-                                        <span class="transaction-debit">{{ summary[wallet_name].USD.debits|round(2) }}</span>
+                                        <span class="transaction-debit">
+                                            {% if summary and wallet_name in summary and 'USD' in summary[wallet_name] %}
+                                                {{ summary[wallet_name].USD.debits|round(2) }}
+                                            {% else %}
+                                                0.00
+                                            {% endif %}
+                                        </span>
                                     </li>
                                     <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
                                         <span>الرصيد الصافي</span>
-                                        <span class="{{ 'transaction-credit' if summary[wallet_name].USD.net >= 0 else 'transaction-debit' }}">
-                                            {{ summary[wallet_name].USD.net|round(2) }}
+                                        <span class="{% if summary and wallet_name in summary and 'USD' in summary[wallet_name] %}{{ 'transaction-credit' if summary[wallet_name].USD.net >= 0 else 'transaction-debit' }}{% else %}transaction-credit{% endif %}">
+                                            {% if summary and wallet_name in summary and 'USD' in summary[wallet_name] %}
+                                                {{ summary[wallet_name].USD.net|round(2) }}
+                                            {% else %}
+                                                0.00
+                                            {% endif %}
                                         </span>
                                     </li>
                                 </ul>
