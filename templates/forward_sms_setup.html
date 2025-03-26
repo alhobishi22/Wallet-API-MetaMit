@@ -62,14 +62,22 @@
                                 <h5 class="mb-0">الخطوة 3: تكوين محتوى الطلب</h5>
                             </div>
                             <div class="card-body">
-                                <p>في قسم <strong>Body</strong>، اختر <strong>Templates</strong> وأدخل التنسيق التالي:</p>
+                                <p>في قسم <strong>Body</strong>، اختر <strong>Templates</strong> وأدخل التنسيق التالي <span class="text-danger">بالضبط</span>:</p>
                                 <div class="alert alert-secondary">
 <pre>{
   "text": "{msg}",
   "sender": "{sender}"
 }</pre>
                                 </div>
-                                <p><strong>ملاحظة مهمة:</strong> تأكد من استخدام <code>"text"</code> وليس <code>"msg"</code> كما هو موضح أعلاه.</p>
+                                <div class="alert alert-warning">
+                                    <p><strong>ملاحظات هامة:</strong></p>
+                                    <ul>
+                                        <li>تأكد من استخدام <code>"text"</code> وليس <code>"msg"</code> كما هو موضح أعلاه.</li>
+                                        <li>تأكد من وجود علامات الاقتباس المزدوجة <code>"</code> حول الكلمات <code>text</code> و <code>sender</code>.</li>
+                                        <li>تأكد من وجود الفاصلة <code>,</code> بين السطرين.</li>
+                                        <li>يجب أن تكون الأقواس <code>{ }</code> بالضبط كما هو موضح.</li>
+                                    </ul>
+                                </div>
                                 
                                 <p>الخصائص المتاحة:</p>
                                 <ul>
@@ -98,6 +106,16 @@
                                     <li>انقر على "Test" لإرسال رسالة اختبار</li>
                                     <li>تحقق من ظهور المعاملة في لوحة التحكم الرئيسية للتطبيق</li>
                                 </ol>
+                                
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>نصيحة:</strong> إذا لم تظهر المعاملة، تأكد من:
+                                    <ul>
+                                        <li>تنسيق البيانات المرسلة بالضبط كما هو موضح أعلاه</li>
+                                        <li>اتصال هاتفك بالإنترنت</li>
+                                        <li>عدم وجود أخطاء في تطبيق Forward SMS</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>

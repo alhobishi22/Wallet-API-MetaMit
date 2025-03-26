@@ -462,78 +462,120 @@ def forward_sms_setup():
 @app.route('/api/receive-sms', methods=['POST', 'GET'])
 def receive_sms():
     """Receive SMS from Forward SMS app."""
-    if request.method == 'POST':
-        # Get SMS data from request
-        # Forward SMS يرسل البيانات في شكل JSON
-        if request.is_json:
-            data = request.get_json()
-            sms_text = data.get('text', '')
-            sender = data.get('sender', '')
-        else:
-            # التعامل مع البيانات المرسلة كنموذج
-            sms_text = request.form.get('msg', '')
-            if not sms_text:
-                sms_text = request.form.get('text', '')
-            
-            sender = request.form.get('sender', '')
-            
-        # طباعة البيانات المستلمة للتصحيح
-        print(f"Received SMS - Sender: {sender}, Text: {sms_text}")
-        print(f"Form data: {request.form}")
-        if request.is_json:
-            print(f"JSON data: {request.get_json()}")
-        
-        # Format the SMS in the expected format
-        formatted_sms = f"From: {sender} \n{sms_text}"
-        
-        # Parse and save the SMS
-        transactions = parse_sms(formatted_sms)
-        
-        if transactions:
-            num_saved = save_transactions(transactions)
-            return jsonify({
-                'status': 'success',
-                'message': f'Successfully processed {num_saved} transactions',
-                'transactions': transactions
-            }), 200
-        else:
-            return jsonify({
-                'status': 'warning',
-                'message': 'No valid transactions found in the SMS'
-            }), 200
+    print("=== RECEIVED REQUEST TO /api/receive-sms ===")
+    print(f"Method: {request.method}")
+    print(f"Headers: {dict(request.headers)}")
+    print(f"Form data: {request.form}")
+    print(f"Args: {request.args}")
     
-    elif request.method == 'GET':
-        # Handle GET request (for testing)
-        sms_text = request.args.get('msg', '')
-        if not sms_text:
-            sms_text = request.args.get('text', '')
+    if request.is_json:
+        print(f"JSON data: {request.get_json()}")
+    
+    try:
+        if request.method == 'POST':
+            # Get SMS data from request
+            sms_text = None
+            sender = None
             
-        sender = request.args.get('sender', '')
+            # Try different ways to get the data
+            if request.is_json:
+                data = request.get_json()
+                print(f"Processing JSON data: {data}")
+                sms_text = data.get('text', '')
+                if not sms_text:
+                    sms_text = data.get('msg', '')
+                sender = data.get('sender', '')
+            else:
+                # Form data
+                print(f"Processing form data: {request.form}")
+                sms_text = request.form.get('msg', '')
+                if not sms_text:
+                    sms_text = request.form.get('text', '')
+                sender = request.form.get('sender', '')
+                
+                # Check if data is in the request body but not parsed as form
+                if not sms_text and request.data:
+                    try:
+                        body_data = json.loads(request.data.decode('utf-8'))
+                        print(f"Processing raw body data: {body_data}")
+                        sms_text = body_data.get('text', '') or body_data.get('msg', '')
+                        sender = body_data.get('sender', '')
+                    except Exception as e:
+                        print(f"Error parsing request body: {e}")
+            
+            # Log received data
+            print(f"Final extracted data - Sender: '{sender}', Text: '{sms_text}'")
+            
+            if not sms_text:
+                print("No SMS text found in request")
+                return jsonify({
+                    'status': 'error',
+                    'message': 'No SMS text provided'
+                }), 400
+            
+            # Format the SMS in the expected format
+            formatted_sms = f"From: {sender} \n{sms_text}"
+            print(f"Formatted SMS: {formatted_sms}")
+            
+            # Parse and save the SMS
+            transactions = parse_sms(formatted_sms)
+            print(f"Parsed transactions: {transactions}")
+            
+            if transactions:
+                num_saved = save_transactions(transactions)
+                print(f"Saved {num_saved} transactions")
+                return jsonify({
+                    'status': 'success',
+                    'message': f'Successfully processed {num_saved} transactions',
+                    'transactions': transactions
+                }), 200
+            else:
+                print("No valid transactions found in the SMS")
+                return jsonify({
+                    'status': 'warning',
+                    'message': 'No valid transactions found in the SMS'
+                }), 200
         
-        if not sms_text:
-            return jsonify({
-                'status': 'error',
-                'message': 'No SMS text provided'
-            }), 400
-        
-        # Format the SMS in the expected format
-        formatted_sms = f"From: {sender} \n{sms_text}"
-        
-        # Parse and save the SMS
-        transactions = parse_sms(formatted_sms)
-        
-        if transactions:
-            num_saved = save_transactions(transactions)
-            return jsonify({
-                'status': 'success',
-                'message': f'Successfully processed {num_saved} transactions',
-                'transactions': transactions
-            }), 200
-        else:
-            return jsonify({
-                'status': 'warning',
-                'message': 'No valid transactions found in the SMS'
-            }), 200
+        elif request.method == 'GET':
+            # Handle GET request (for testing)
+            sms_text = request.args.get('msg', '')
+            if not sms_text:
+                sms_text = request.args.get('text', '')
+                
+            sender = request.args.get('sender', '')
+            
+            if not sms_text:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'No SMS text provided'
+                }), 400
+            
+            # Format the SMS in the expected format
+            formatted_sms = f"From: {sender} \n{sms_text}"
+            
+            # Parse and save the SMS
+            transactions = parse_sms(formatted_sms)
+            
+            if transactions:
+                num_saved = save_transactions(transactions)
+                return jsonify({
+                    'status': 'success',
+                    'message': f'Successfully processed {num_saved} transactions',
+                    'transactions': transactions
+                }), 200
+            else:
+                return jsonify({
+                    'status': 'warning',
+                    'message': 'No valid transactions found in the SMS'
+                }), 200
+    except Exception as e:
+        print(f"Error in receive_sms: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'status': 'error',
+            'message': f'Server error: {str(e)}'
+        }), 500
     
     return jsonify({
         'status': 'error',
