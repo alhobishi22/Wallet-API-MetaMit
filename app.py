@@ -626,4 +626,15 @@ def generate_wallet_charts(transactions, wallet_name):
     return charts
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Ensure the upload folder exists
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    
+    # Initialize the database
+    db.init_app(app)
+    migrate = Migrate(app, db)
+    
+    # Get port from environment variable for Render compatibility
+    port = int(os.environ.get('PORT', 5000))
+    
+    # Run the app with the specified port and host
+    app.run(host='0.0.0.0', port=port, debug=True)
