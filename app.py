@@ -464,9 +464,24 @@ def receive_sms():
     """Receive SMS from Forward SMS app."""
     if request.method == 'POST':
         # Get SMS data from request
-        sms_text = request.form.get('msg', '')
-        sender = request.form.get('sender', '')
-        sim_detail = request.form.get('sim-detail', '')
+        # Forward SMS يرسل البيانات في شكل JSON
+        if request.is_json:
+            data = request.get_json()
+            sms_text = data.get('text', '')
+            sender = data.get('sender', '')
+        else:
+            # التعامل مع البيانات المرسلة كنموذج
+            sms_text = request.form.get('msg', '')
+            if not sms_text:
+                sms_text = request.form.get('text', '')
+            
+            sender = request.form.get('sender', '')
+            
+        # طباعة البيانات المستلمة للتصحيح
+        print(f"Received SMS - Sender: {sender}, Text: {sms_text}")
+        print(f"Form data: {request.form}")
+        if request.is_json:
+            print(f"JSON data: {request.get_json()}")
         
         # Format the SMS in the expected format
         formatted_sms = f"From: {sender} \n{sms_text}"
@@ -490,6 +505,9 @@ def receive_sms():
     elif request.method == 'GET':
         # Handle GET request (for testing)
         sms_text = request.args.get('msg', '')
+        if not sms_text:
+            sms_text = request.args.get('text', '')
+            
         sender = request.args.get('sender', '')
         
         if not sms_text:
