@@ -358,6 +358,7 @@ def wallet(wallet_name):
     
     # Initialize dictionary to store confirmation status
     confirmed_status = {}
+    db_updates_needed = False
     
     # Group transactions by currency
     transactions_by_currency = {}
@@ -374,6 +375,12 @@ def wallet(wallet_name):
         if len(txs) > 0:
             first_tx = txs[0]
             confirmed_status[first_tx.id] = False
+            
+            # Update database if different
+            if first_tx.is_confirmed_db != False:
+                first_tx.is_confirmed_db = False
+                db_updates_needed = True
+                
             print(f"معاملة {first_tx.transaction_id}: أول معاملة للعملة {currency} - غير مؤكدة")
         
         # Process remaining transactions
@@ -400,16 +407,37 @@ def wallet(wallet_name):
                 expected_balance = round(expected_balance, 2)
                 
                 # Compare with a small tolerance (0.01) as in the account-deteals project
-                if abs(current_balance - expected_balance) <= 0.01:
-                    confirmed_status[current_tx.id] = True
+                is_confirmed = abs(current_balance - expected_balance) <= 0.01
+                confirmed_status[current_tx.id] = is_confirmed
+                
+                # Update database if different
+                if current_tx.is_confirmed_db != is_confirmed:
+                    current_tx.is_confirmed_db = is_confirmed
+                    db_updates_needed = True
+                
+                if is_confirmed:
                     print(f"معاملة {tx_code}: مؤكدة - الرصيد المتوقع {expected_balance:.2f} يتطابق مع الرصيد الفعلي {current_balance:.2f}")
                 else:
-                    confirmed_status[current_tx.id] = False
                     print(f"معاملة {tx_code}: غير مؤكدة - الرصيد المتوقع {expected_balance:.2f} لا يتطابق مع الرصيد الفعلي {current_balance:.2f}")
             
             except (ValueError, TypeError):
                 confirmed_status[current_tx.id] = False
+                
+                # Update database if different
+                if current_tx.is_confirmed_db != False:
+                    current_tx.is_confirmed_db = False
+                    db_updates_needed = True
+                    
                 print(f"معاملة {tx_code}: غير مؤكدة - خطأ في تحويل الرصيد إلى رقم")
+    
+    # Save changes to database if needed
+    if db_updates_needed:
+        try:
+            db.session.commit()
+            print("تم تحديث حالات التأكيد في قاعدة البيانات")
+        except Exception as e:
+            db.session.rollback()
+            print(f"خطأ في تحديث قاعدة البيانات: {str(e)}")
     
     # Sort transactions back to descending order for display
     transactions.sort(key=lambda x: x.timestamp, reverse=True)

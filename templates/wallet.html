@@ -261,7 +261,7 @@
                                 <td>{{ transaction.balance|round(2) if transaction.balance else '-' }}</td>
                                 <td>{{ transaction.timestamp }}</td>
                                 <td>
-                                    {% if confirmed_status and transaction.id in confirmed_status and confirmed_status[transaction.id] %}
+                                    {% if transaction.is_confirmed %}
                                         <span class="badge bg-success" title="الرصيد يتطابق مع العمليات السابقة">
                                             <i class="fas fa-check-circle"></i> مؤكدة
                                         </span>

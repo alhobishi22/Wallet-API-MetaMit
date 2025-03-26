@@ -20,6 +20,7 @@ class Transaction(db.Model):
     raw_message = db.Column(db.Text, nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.now)
     created_at = db.Column(db.DateTime, default=datetime.now)
+    is_confirmed_db = db.Column(db.Boolean, default=False)  # Nueva columna para almacenar el estado de confirmación
     
     # خصائص افتراضية للأعمدة الجديدة
     @property
@@ -31,8 +32,8 @@ class Transaction(db.Model):
     @property
     def is_confirmed(self):
         """Check if transaction is confirmed."""
-        # استخدم القيمة المحسوبة في الذاكرة إذا كانت موجودة
-        return getattr(self, 'is_confirmed_value', False)
+        # استخدم القيمة المخزنة في قاعدة البيانات
+        return self.is_confirmed_db
     
     def to_dict(self):
         """Convert transaction to dictionary."""
@@ -79,5 +80,10 @@ class Transaction(db.Model):
             except (ValueError, TypeError):
                 # If timestamp format is invalid, use current time
                 transaction.timestamp = datetime.now()
+        
+        # Handle is_confirmed if provided
+        is_confirmed = data.get('is_confirmed')
+        if is_confirmed is not None:
+            transaction.is_confirmed_db = is_confirmed
         
         return transaction
