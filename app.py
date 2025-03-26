@@ -629,10 +629,6 @@ if __name__ == '__main__':
     # Ensure the upload folder exists
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     
-    # Initialize the database
-    db.init_app(app)
-    migrate = Migrate(app, db)
-    
     # Get port from environment variable for Render compatibility
     port = int(os.environ.get('PORT', 5000))
     
