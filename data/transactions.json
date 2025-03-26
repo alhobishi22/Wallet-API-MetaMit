@@ -1,0 +1,13 @@
+[
+  {
+    "type": "credit",
+    "amount": 860.0,
+    "currency": "USD",
+    "balance": 1057.22,
+    "balance_currency": "USD",
+    "details": "دفع مشت",
+    "wallet": "Jaib",
+    "raw_message": "From: Jaib \r\nاضيف 860د.أ مقابل دفع مشتريات رص:1057.22د.أ من(15454)\r",
+    "timestamp": "2025-03-26 23:33:56"
+  }
+]

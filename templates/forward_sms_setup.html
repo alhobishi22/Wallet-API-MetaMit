@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">إعداد تطبيق Forward SMS</h5>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-home"></i> الرئيسية
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>ملاحظة:</strong> يجب أن يكون تطبيق محلل رسائل المحافظ متاحًا على الإنترنت لكي يتمكن تطبيق Forward SMS من الوصول إليه. يمكنك استخدام خدمات مثل Ngrok لتوجيه الطلبات إلى جهازك المحلي أو نشر التطبيق على خادم عام.
+                </div>
+                
+                <h4 class="mt-4 mb-3">خطوات إعداد Forward SMS</h4>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">الخطوة 1: إنشاء قاعدة في Forward SMS</h5>
+                            </div>
+                            <div class="card-body">
+                                <ol>
+                                    <li>افتح تطبيق Forward SMS على هاتفك</li>
+                                    <li>انقر على "إنشاء قاعدة أساسية أو متقدمة"</li>
+                                    <li>في قسم المستلمين، انقر على خيار قائمة المستلم واختر "URL"</li>
+                                    <li>انقر على "تحرير تكوين URL" لبدء الإعداد</li>
+                                </ol>
+                                <div class="text-center mt-3">
+                                    <img src="https://i.imgur.com/example1.jpg" alt="إنشاء قاعدة" class="img-fluid rounded shadow" style="max-width: 300px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">الخطوة 2: إعداد URL API</h5>
+                            </div>
+                            <div class="card-body">
+                                <ol>
+                                    <li>حدد طريقة URL، يمكنك اختيار POST أو GET (يفضل POST)</li>
+                                    <li>أدخل عنوان URL الخاص بتطبيق محلل رسائل المحافظ:</li>
+                                    <div class="alert alert-secondary mt-2 mb-2">
+                                        <code>https://your-domain.com/api/receive-sms</code>
+                                    </div>
+                                    <li>يمكنك استخدام الخصائص المتاحة كمعلمات استعلام:</li>
+                                    <div class="alert alert-secondary mt-2">
+                                        <code>https://your-domain.com/api/receive-sms?sender={sender}</code>
+                                    </div>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">الخطوة 3: تكوين محتوى الطلب</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>عند استخدام طريقة POST، يمكنك تكوين محتوى الطلب كما يلي:</p>
+                                <div class="alert alert-secondary">
+<pre>{
+  "msg": "{msg}",
+  "sender": "{sender}",
+  "sim-detail": "{sim-detail}"
+}</pre>
+                                </div>
+                                <p>الخصائص المتاحة:</p>
+                                <ul>
+                                    <li><code>{msg}</code>: محتوى الرسالة القصيرة</li>
+                                    <li><code>{sender}</code>: تفاصيل المرسل (مثل Jaib أو Jawali أو Cash)</li>
+                                    <li><code>{local-time}</code>: الوقت المحلي</li>
+                                    <li><code>{time}</code>: الوقت بتنسيق UTC ISO</li>
+                                    <li><code>{sim-detail}</code>: تفاصيل شريحة SIM</li>
+                                    <li><code>{rule-name}</code>: اسم القاعدة</li>
+                                    <li><code>{app-name}</code>: اسم التطبيق</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">الخطوة 4: اختبار الإعداد</h5>
+                            </div>
+                            <div class="card-body">
+                                <ol>
+                                    <li>بعد حفظ إعدادات URL، انقر على "حفظ" للقاعدة</li>
+                                    <li>اختبر القاعدة للتأكد من توجيه الرسائل القصيرة بشكل صحيح</li>
+                                    <li>يمكنك التحقق من نجاح الإعداد من خلال مراقبة وصول الرسائل الجديدة إلى تطبيق محلل رسائل المحافظ</li>
+                                </ol>
+                                <div class="alert alert-success mt-3">
+                                    <i class="fas fa-check-circle"></i>
+                                    <strong>نصيحة:</strong> تأكد من أن تطبيق Forward SMS لديه إذن للوصول إلى الرسائل القصيرة على هاتفك.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">مثال كامل لإعداد URL</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>إعداد URL:</h6>
+                                <div class="alert alert-secondary">
+                                    <code>https://your-domain.com/api/receive-sms</code>
+                                </div>
+                                
+                                <h6 class="mt-4">طريقة الطلب:</h6>
+                                <div class="alert alert-secondary">
+                                    <code>POST</code>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h6>محتوى الطلب (Body):</h6>
+                                <div class="alert alert-secondary">
+<pre>{
+  "msg": "{msg}",
+  "sender": "{sender}",
+  "sim-detail": "{sim-detail}"
+}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>ملاحظة مهمة:</strong> تأكد من استبدال <code>your-domain.com</code> بعنوان URL الفعلي لتطبيق محلل رسائل المحافظ الخاص بك.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Forward SMS setup page loaded');
+    });
+</script>
+{% endblock %}
