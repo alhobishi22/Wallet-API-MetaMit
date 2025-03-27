@@ -259,7 +259,7 @@
                                 <td>{{ transaction.details }}</td>
                                 <td>{{ transaction.counterparty if transaction.counterparty else '-' }}</td>
                                 <td>{{ transaction.balance|round(2) if transaction.balance else '-' }}</td>
-                                <td>{{ transaction.timestamp }}</td>
+                                <td>{{ transaction.timestamp|yemen_time }}</td>
                                 <td>
                                     {% if transaction.is_confirmed %}
                                         <span class="badge bg-success" title="الرصيد يتطابق مع العمليات السابقة">

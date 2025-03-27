@@ -4,6 +4,8 @@ import re
 import json
 import pandas as pd
 from datetime import datetime
+import pytz
+from babel.dates import format_datetime
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -20,12 +22,42 @@ app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__fil
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://metabit_safty_db_user:i7jQbcMMM2sg7k12PwweDO1koIUd3ppF@dpg-cvc9e8bv2p9s73ad9g5g-a.singapore-postgres.render.com/metabit_safty_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize database
+# تهيئة قاعدة البيانات وأداة الترحيل
 db.init_app(app)
 migrate = Migrate(app, db)
 
-# Ensure the data directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Define wallet types
+WALLET_TYPES = ['Jaib', 'Jawali', 'Cash', 'KuraimiIMB', 'ONE Cash']
+
+# تكوين منطقة التوقيت لليمن
+YEMEN_TIMEZONE = pytz.timezone('Asia/Aden')
+
+# دالة مساعدة لتنسيق التاريخ والوقت بتوقيت اليمن
+def format_yemen_datetime(dt_str=None):
+    """تنسيق التاريخ والوقت حسب توقيت اليمن"""
+    if dt_str:
+        try:
+            dt = datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S')
+            dt = pytz.utc.localize(dt).astimezone(YEMEN_TIMEZONE)
+        except:
+            return dt_str
+    else:
+        dt = datetime.now(YEMEN_TIMEZONE)
+    
+    return format_datetime(dt, format='dd/MM/yyyy hh:mm:ss a', locale='ar_YE')
+
+# إضافة دالة مساعدة لاستخدامها في القوالب
+@app.template_filter('yemen_time')
+def yemen_time_filter(dt_str):
+    """تحويل التاريخ والوقت إلى تنسيق 12 ساعة"""
+    try:
+        dt = datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S')
+        # تحويل إلى توقيت اليمن
+        dt = dt.replace(tzinfo=pytz.UTC).astimezone(YEMEN_TIMEZONE)
+        # تنسيق بنظام 12 ساعة مع إظهار ص/م
+        return dt.strftime('%I:%M:%S %p %d/%m/%Y')
+    except:
+        return dt_str
 
 # Define currency symbols and codes
 CURRENCIES = {
@@ -34,8 +66,8 @@ CURRENCIES = {
     'د.أ': 'USD'
 }
 
-# Define wallet types
-WALLET_TYPES = ['Jaib', 'Jawali', 'Cash', 'KuraimiIMB', 'ONE Cash']
+# Ensure the data directory exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 def parse_jaib_sms(message):
     """Parse SMS messages from Jaib wallet."""
@@ -325,23 +357,29 @@ def parse_sms(sms_text):
         elif wallet_name == 'ONE Cash':
             print("تحليل رسالة ون كاش...")
             transaction = parse_onecash_sms(message_body)
-        # إضافة التعرف على المحافظ من خلال محتوى الرسالة إذا كان اسم المحفظة غير معروف
-        elif 'أودع' in message_body or 'تم تحويل' in message_body:
-            if any(currency in message_body for currency in ['SAR', 'YER', 'USD']):
-                print(f"تم اكتشاف رسالة بنك الكريمي من المحتوى، اسم المحفظة: {wallet_name}")
+        # تجربة تحديد نوع المحفظة من محتوى الرسالة إذا لم يتم التعرف عليها من الاسم
+        else:
+            if 'محفظة جيب' in message_body:
+                transaction = parse_jaib_sms(message_body)
+                wallet_name = 'Jaib'
+            elif 'جوالي' in message_body:
+                transaction = parse_jawali_sms(message_body)
+                wallet_name = 'Jawali'
+            elif 'كاش' in message_body and not 'ون كاش' in message_body:
+                transaction = parse_cash_sms(message_body)
+                wallet_name = 'Cash'
+            elif 'الكريمي' in message_body or 'كريمي' in message_body:
                 transaction = parse_kuraimi_sms(message_body)
-                wallet_name = 'KuraimiIMB'  # تعيين اسم المحفظة إلى القيمة الصحيحة
-        elif 'استلمت' in message_body or 'حولت' in message_body:
-            if 'ر.ي' in message_body:
-                print(f"تم اكتشاف رسالة ون كاش من المحتوى، اسم المحفظة: {wallet_name}")
+                wallet_name = 'KuraimiIMB'
+            elif 'ون كاش' in message_body or 'ONE' in message_body:
                 transaction = parse_onecash_sms(message_body)
-                wallet_name = 'ONE Cash'  # تعيين اسم المحفظة إلى القيمة الصحيحة
-        
-        if transaction:
+                wallet_name = 'ONE Cash'
+            
+        if transaction and all(key in transaction for key in ['amount', 'currency']):
             print(f"تم اكتشاف معاملة صالحة: {transaction}")
             transaction['wallet'] = wallet_name
             transaction['raw_message'] = message
-            transaction['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            transaction['timestamp'] = datetime.now(YEMEN_TIMEZONE).strftime('%Y-%m-%d %H:%M:%S')
             transactions.append(transaction)
         else:
             print(f"لم يتم اكتشاف معاملة صالحة من الرسالة")
@@ -498,123 +536,72 @@ def generate_charts(transactions):
     
     return charts
 
-def generate_wallet_charts(transactions, wallet_name):
-    """Generate charts for a specific wallet's transaction visualization."""
-    if not transactions:
-        return {}
-    
-    df = pd.DataFrame(transactions)
-    charts = {}
-    
-    # Ensure required columns exist
-    required_columns = ['currency', 'type', 'amount']
-    if not all(col in df.columns for col in required_columns):
-        return charts
-    
-    # Transaction type distribution by currency for this wallet
-    plt.figure(figsize=(10, 6))
-    
-    for currency in df['currency'].unique():
-        currency_df = df[df['currency'] == currency]
-        
-        # Count transactions by type
-        type_counts = currency_df['type'].value_counts()
-        
-        plt.bar(
-            [f"{currency} - {t}" for t in type_counts.index],
-            type_counts.values
-        )
-    
-    plt.title(f'أنواع المعاملات حسب العملة - {wallet_name}')
-    plt.xlabel('العملة - نوع المعاملة')
-    plt.ylabel('عدد المعاملات')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    
-    # Save to BytesIO
-    img_bytes = BytesIO()
-    plt.savefig(img_bytes, format='png')
-    img_bytes.seek(0)
-    
-    # Convert to base64 for embedding in HTML
-    img_base64 = base64.b64encode(img_bytes.read()).decode('utf-8')
-    charts['transaction_types'] = img_base64
-    
-    plt.close()
-    
-    # Amount distribution by currency and type for this wallet
-    plt.figure(figsize=(10, 6))
-    
-    # Group by currency and type, sum amounts
-    if len(df) > 0:
-        grouped = df.groupby(['currency', 'type'])['amount'].sum().unstack()
-        grouped.plot(kind='bar', ax=plt.gca())
-        
-        plt.title(f'مبالغ المعاملات حسب العملة والنوع - {wallet_name}')
-        plt.xlabel('العملة')
-        plt.ylabel('إجمالي المبلغ')
-        plt.legend(title='نوع المعاملة')
-        plt.tight_layout()
-        
-        # Save to BytesIO
-        img_bytes = BytesIO()
-        plt.savefig(img_bytes, format='png')
-        img_bytes.seek(0)
-        
-        # Convert to base64 for embedding in HTML
-        img_base64 = base64.b64encode(img_bytes.read()).decode('utf-8')
-        charts['amount_distribution'] = img_base64
-    
-    plt.close()
-    
-    # Transaction timeline if we have timestamps
-    if 'timestamp' in df.columns and len(df) > 0:
-        plt.figure(figsize=(12, 6))
-        
-        # Convert timestamp to datetime if it's not already
-        if df['timestamp'].dtype == 'object':
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
-        
-        # Group by date and currency
-        df['date'] = df['timestamp'].dt.date
-        timeline = df.groupby(['date', 'currency', 'type'])['amount'].sum().unstack(level=[1, 2]).fillna(0)
-        
-        if not timeline.empty and timeline.shape[1] > 0:
-            timeline.plot(kind='line', marker='o', ax=plt.gca())
-            
-            plt.title(f'تطور المعاملات عبر الزمن - {wallet_name}')
-            plt.xlabel('التاريخ')
-            plt.ylabel('المبلغ')
-            plt.grid(True, linestyle='--', alpha=0.7)
-            plt.tight_layout()
-            
-            # Save to BytesIO
-            img_bytes = BytesIO()
-            plt.savefig(img_bytes, format='png')
-            img_bytes.seek(0)
-            
-            # Convert to base64 for embedding in HTML
-            img_base64 = base64.b64encode(img_bytes.read()).decode('utf-8')
-            charts['timeline'] = img_base64
-        
-        plt.close()
-    
-    return charts
+def generate_wallet_charts(transactions):
+    """Generate charts for transaction visualization."""
+    # تم إلغاء الرسوم البيانية
+    return {}
 
 @app.route('/')
 def index():
     """Render the home page."""
-    transactions = load_transactions()
-    summary = generate_transaction_summary(transactions)
-    charts = generate_charts(transactions)
-    
-    return render_template(
-        'index.html',
-        transactions=transactions,
-        summary=summary,
-        charts=charts,
-        now=datetime.now()
-    )
+    try:
+        transactions = Transaction.query.all()
+        wallets = {}
+        for transaction in transactions:
+            if transaction.wallet not in wallets:
+                wallets[transaction.wallet] = {'total': 0, 'currencies': {}}
+            
+            if transaction.currency not in wallets[transaction.wallet]['currencies']:
+                wallets[transaction.wallet]['currencies'][transaction.currency] = 0
+            
+            wallets[transaction.wallet]['currencies'][transaction.currency] += 1
+            wallets[transaction.wallet]['total'] += 1
+        
+        # Generate summary data for each wallet and currency
+        summary = {}
+        currencies = ['YER', 'SAR', 'USD']  # المفترضة لجميع المحافظ
+        
+        for wallet in WALLET_TYPES:
+            summary[wallet] = {}
+            
+            # تهيئة جميع العملات بقيم افتراضية
+            for currency in currencies:
+                summary[wallet][currency] = {'credits': 0, 'debits': 0, 'net': 0}
+                
+            # تحديث البيانات للعملات التي لديها معاملات فعلية
+            for transaction in [t for t in transactions if t.wallet == wallet]:
+                if transaction.type == 'credit':
+                    summary[wallet][transaction.currency]['credits'] += transaction.amount
+                else:
+                    summary[wallet][transaction.currency]['debits'] += transaction.amount
+                
+                summary[wallet][transaction.currency]['net'] = (
+                    summary[wallet][transaction.currency]['credits'] - 
+                    summary[wallet][transaction.currency]['debits']
+                )
+        
+        # Generate wallet charts
+        charts = generate_wallet_charts(transactions)
+        
+        # Create response with proper headers to prevent caching
+        response = make_response(render_template(
+            'index.html',
+            wallets=wallets,
+            transactions=transactions,
+            summary=summary,
+            charts=charts,
+            now=format_yemen_datetime()
+        ))
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+    except Exception as e:
+        print(f"Error in index: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Server error: {str(e)}'
+        }), 500
 
 @app.route('/wallet/<wallet_name>')
 def wallet(wallet_name):
@@ -734,7 +721,7 @@ def wallet(wallet_name):
                                             summary=summary, 
                                             charts=charts, 
                                             confirmed_status=confirmed_status,
-                                            now=datetime.now()))
+                                            now=format_yemen_datetime()))
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
@@ -835,10 +822,8 @@ def export_data():
 @app.route('/forward-sms-setup')
 def forward_sms_setup():
     """Render the Forward SMS setup guide page."""
-    return render_template(
-        'forward_sms_setup.html',
-        now=datetime.now()
-    )
+    # تم إلغاء هذه الصفحة وإعادة توجيهها إلى الصفحة الرئيسية
+    return redirect(url_for('index'))
 
 @app.route('/api/receive-sms', methods=['POST', 'GET'])
 def receive_sms():
