@@ -229,33 +229,45 @@ def generate_transaction_summary(transactions):
     if not transactions:
         return None
     
-    df = pd.DataFrame(transactions)
-    
     # Initialize summary structure
     summary = {
-        wallet: {currency: {'credits': 0, 'debits': 0, 'net': 0} 
+        wallet: {currency: {'credits': 0.0, 'debits': 0.0, 'net': 0.0} 
                 for currency in ['YER', 'SAR', 'USD']}
         for wallet in WALLET_TYPES
     }
     
-    # Group by wallet, currency and transaction type
-    if 'wallet' in df.columns and 'currency' in df.columns and 'type' in df.columns and 'amount' in df.columns:
-        for wallet in df['wallet'].unique():
-            wallet_df = df[df['wallet'] == wallet]
-            
-            for currency in ['YER', 'SAR', 'USD']:
-                currency_df = wallet_df[wallet_df['currency'] == currency]
+    # Process each transaction directly
+    for tx in transactions:
+        # Check if tx is a dict or SQLAlchemy object and extract fields accordingly
+        if isinstance(tx, dict):
+            wallet = tx.get('wallet')
+            currency = tx.get('currency')
+            tx_type = tx.get('type')
+            tx_amount = tx.get('amount')
+            tx_id = tx.get('id')
+        else:
+            wallet = tx.wallet
+            currency = tx.currency
+            tx_type = tx.type
+            tx_amount = tx.amount
+            tx_id = tx.id
+        
+        if wallet in summary and currency in summary[wallet]:
+            try:
+                amount = float(tx_amount) if tx_amount is not None else 0.0
                 
-                if not currency_df.empty:
-                    credits = currency_df[currency_df['type'] == 'credit']['amount'].sum()
-                    debits = currency_df[currency_df['type'] == 'debit']['amount'].sum()
-                    
-                    if wallet in summary:
-                        summary[wallet][currency] = {
-                            'credits': credits,
-                            'debits': debits,
-                            'net': credits - debits
-                        }
+                if tx_type == 'credit':
+                    summary[wallet][currency]['credits'] += amount
+                elif tx_type == 'debit':
+                    summary[wallet][currency]['debits'] += amount
+                
+                # Recalculate net balance
+                summary[wallet][currency]['net'] = summary[wallet][currency]['credits'] - summary[wallet][currency]['debits']
+                
+                # Debug output to help diagnose the issue
+                print(f"Updated summary for {wallet}/{currency}: Credits={summary[wallet][currency]['credits']}, Debits={summary[wallet][currency]['debits']}, Net={summary[wallet][currency]['net']}")
+            except (ValueError, TypeError) as e:
+                print(f"Error processing transaction {tx_id}: {str(e)}")
     
     return summary
 
@@ -351,7 +363,7 @@ def wallet(wallet_name):
         flash('المحفظة غير موجودة', 'danger')
         return redirect(url_for('index'))
     
-    # Get transactions for this wallet - sort by timestamp ascending (oldest first)
+    # Get transactions for this wallet - sort by timestamp ascending (oldest first) for processing
     transactions = Transaction.query.filter_by(wallet=wallet_name).order_by(Transaction.timestamp.asc(), Transaction.id.asc()).all()
     
     print(f"===== تحليل تأكيد المعاملات لمحفظة {wallet_name} =====")
@@ -406,7 +418,7 @@ def wallet(wallet_name):
                 current_balance = round(current_balance, 2)
                 expected_balance = round(expected_balance, 2)
                 
-                # Compare with a small tolerance (0.01) as in the account-deteals project
+                # Compare with a small tolerance (0.01) as in the account-deteils project
                 is_confirmed = abs(current_balance - expected_balance) <= 0.01
                 confirmed_status[current_tx.id] = is_confirmed
                 
@@ -439,8 +451,13 @@ def wallet(wallet_name):
             db.session.rollback()
             print(f"خطأ في تحديث قاعدة البيانات: {str(e)}")
     
-    # Sort transactions back to descending order for display
-    transactions.sort(key=lambda x: x.timestamp, reverse=True)
+    # Sort transactions by timestamp, then by id in descending order for display
+    # This handles cases where timestamps are identical (common with imported data)
+    sorted_transactions = sorted(
+        transactions, 
+        key=lambda x: (x.timestamp, x.id), 
+        reverse=True
+    )
     
     # Generate transaction summary
     summary = generate_transaction_summary(transactions)
@@ -453,7 +470,7 @@ def wallet(wallet_name):
     # Add a no-cache header to ensure the browser doesn't cache the response
     response = make_response(render_template('wallet.html', 
                                             wallet_name=wallet_name, 
-                                            transactions=transactions, 
+                                            transactions=sorted_transactions, 
                                             summary=summary, 
                                             charts=charts, 
                                             confirmed_status=confirmed_status,
