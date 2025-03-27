@@ -16,12 +16,24 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
-from models import db, Transaction
+from models import db, Transaction, User
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from wtforms.validators import DataRequired, Email, Length, EqualTo
+from functools import wraps
 
 app = Flask(__name__)
 app.config.from_object('config')
 app.secret_key = 'wallet_sms_analyzer_secret_key'
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+
+# إعداد Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'يرجى تسجيل الدخول للوصول إلى هذه الصفحة'
+login_manager.login_message_category = 'info'
 
 # Configure PostgreSQL database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://metabit_safty_db_user:i7jQbcMMM2sg7k12PwweDO1koIUd3ppF@dpg-cvc9e8bv2p9s73ad9g5g-a.singapore-postgres.render.com/metabit_safty_db'
@@ -80,6 +92,13 @@ CURRENCIES = {
 # Ensure the data directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# إضافة متغير now تلقائياً إلى جميع القوالب
+@app.context_processor
+def inject_now():
+    """تضمين متغير التاريخ الحالي في جميع القوالب تلقائياً."""
+    return {'now': datetime.now()}
+
+# دالة مساعدة لتحليل رسائل SMS
 def parse_jaib_sms(message):
     """Parse SMS messages from Jaib wallet."""
     transaction = {}
@@ -579,6 +598,7 @@ def generate_wallet_charts(transactions):
     return {}
 
 @app.route('/')
+@login_required
 def index():
     """Render the home page."""
     try:
@@ -642,6 +662,7 @@ def index():
         }), 500
 
 @app.route('/wallet/<wallet_name>')
+@login_required
 def wallet(wallet_name):
     """Display wallet details and transactions."""
     if wallet_name not in WALLET_TYPES:
@@ -786,6 +807,7 @@ def upload():
     return redirect(url_for('index'))
 
 @app.route('/upload/<wallet_name>', methods=['POST'])
+@login_required
 def upload_wallet(wallet_name):
     """Process uploaded SMS text for a specific wallet."""
     if wallet_name not in WALLET_TYPES:
@@ -835,6 +857,7 @@ def clear_data():
     return redirect(url_for('index'))
 
 @app.route('/clear/<wallet_name>', methods=['POST'])
+@login_required
 def clear_wallet_data(wallet_name):
     """Clear transaction data for a specific wallet."""
     if wallet_name not in WALLET_TYPES:
@@ -850,7 +873,8 @@ def clear_wallet_data(wallet_name):
     
     return redirect(url_for('wallet', wallet_name=wallet_name))
 
-@app.route('/delete_transaction/<int:transaction_id>', methods=['POST'])
+@app.route('/delete-transaction/<int:transaction_id>', methods=['POST'])
+@login_required
 def delete_transaction(transaction_id):
     """حذف معاملة محددة بواسطة معرفها"""
     try:
@@ -1203,14 +1227,152 @@ def api_get_wallet_summary(wallet_name):
     })
 
 @app.route('/api/docs', methods=['GET'])
+@login_required
 def api_docs():
     """توثيق واجهة برمجة التطبيقات"""
     now = datetime.now()  # إضافة متغير التاريخ الحالي
     return render_template('api_docs.html', now=now)
 
+# تحميل المستخدم لـ Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# مصادقة مفتاح API
+def verify_api_key():
+    """التحقق من صحة مفتاح API في رأس الطلب."""
+    api_key = request.headers.get('X-API-Key')
+    return api_key == app.config['API_KEY']
+
+# وظيفة مساعدة للتحقق من صلاحيات المشرف
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            flash('عذراً، لا تملك الصلاحيات للوصول إلى هذه الصفحة.', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# نموذج تسجيل الدخول
+class LoginForm(FlaskForm):
+    username = StringField('اسم المستخدم', validators=[DataRequired()])
+    password = PasswordField('كلمة المرور', validators=[DataRequired()])
+    remember_me = BooleanField('تذكرني')
+    submit = SubmitField('تسجيل الدخول')
+
+# طرق تسجيل الدخول وتسجيل الخروج
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """صفحة تسجيل الدخول للمشرفين."""
+    if current_user.is_authenticated:
+        return redirect(url_for('admin_dashboard'))
+    
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user is None or not user.check_password(form.password.data):
+            flash('اسم المستخدم أو كلمة المرور غير صحيحة', 'danger')
+            return redirect(url_for('login'))
+        
+        login_user(user, remember=form.remember_me.data)
+        user.last_login = datetime.now()
+        db.session.commit()
+        
+        next_page = request.args.get('next')
+        if not next_page or not next_page.startswith('/'):
+            next_page = url_for('admin_dashboard')
+        return redirect(next_page)
+    
+    now = datetime.now()  # إضافة متغير التاريخ الحالي
+    return render_template('login.html', title='تسجيل الدخول', form=form, now=now)
+
+@app.route('/logout')
+@login_required
+def logout():
+    """تسجيل الخروج."""
+    logout_user()
+    flash('تم تسجيل الخروج بنجاح', 'success')
+    return redirect(url_for('index'))
+
+@app.route('/admin')
+@login_required
+@admin_required
+def admin_dashboard():
+    """لوحة تحكم المشرف."""
+    wallets = db.session.query(Transaction.wallet).distinct().all()
+    wallet_list = [wallet[0] for wallet in wallets]
+    
+    # إحصائيات سريعة
+    total_transactions = Transaction.query.count()
+    wallet_counts = {}
+    for wallet in wallet_list:
+        wallet_counts[wallet] = Transaction.query.filter_by(wallet=wallet).count()
+    
+    return render_template('admin_dashboard.html', title='لوحة تحكم المشرف',
+                           wallets=wallet_list, wallet_counts=wallet_counts,
+                           total_transactions=total_transactions)
+
+@app.route('/admin/create-user', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_user():
+    """إنشاء مستخدم جديد."""
+    class UserForm(FlaskForm):
+        username = StringField('اسم المستخدم', validators=[DataRequired(), Length(min=3, max=64)])
+        email = StringField('البريد الإلكتروني', validators=[DataRequired(), Email()])
+        password = PasswordField('كلمة المرور', validators=[DataRequired(), Length(min=8)])
+        confirm_password = PasswordField('تأكيد كلمة المرور', validators=[DataRequired(), EqualTo('password')])
+        is_admin = BooleanField('صلاحيات المشرف')
+        submit = SubmitField('إنشاء المستخدم')
+    
+    form = UserForm()
+    if form.validate_on_submit():
+        # التحقق من عدم وجود مستخدم بنفس الاسم أو البريد
+        if User.query.filter_by(username=form.username.data).first():
+            flash('اسم المستخدم مستخدم بالفعل', 'danger')
+            return redirect(url_for('create_user'))
+        
+        if User.query.filter_by(email=form.email.data).first():
+            flash('البريد الإلكتروني مستخدم بالفعل', 'danger')
+            return redirect(url_for('create_user'))
+        
+        # إنشاء المستخدم الجديد
+        user = User(username=form.username.data, email=form.email.data,
+                    is_admin=form.is_admin.data)
+        user.set_password(form.password.data)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        flash(f'تم إنشاء المستخدم {form.username.data} بنجاح', 'success')
+        return redirect(url_for('admin_dashboard'))
+    
+    return render_template('create_user.html', title='إنشاء مستخدم جديد', form=form)
+
 if __name__ == '__main__':
     # Ensure the upload folder exists
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    
+    # إنشاء جداول قاعدة البيانات إذا لم تكن موجودة
+    with app.app_context():
+        db.create_all()
+        
+        # التحقق من وجود المستخدمين وإنشاء مستخدم مشرف افتراضي إذا لم يكن هناك أي مستخدم
+        if User.query.count() == 0:
+            print("إنشاء مستخدم مشرف افتراضي...")
+            default_admin = User(
+                username="admin",
+                email="admin@metabit.com",
+                is_admin=True
+            )
+            default_admin.set_password("MetaBit@2025")
+            db.session.add(default_admin)
+            db.session.commit()
+            print("تم إنشاء مستخدم المشرف الافتراضي:")
+            print("اسم المستخدم: admin")
+            print("كلمة المرور: MetaBit@2025")
+            print("يرجى تغيير كلمة المرور بعد تسجيل الدخول.")
     
     # Get port from environment variable for Render compatibility
     port = int(os.environ.get('PORT', 5000))
