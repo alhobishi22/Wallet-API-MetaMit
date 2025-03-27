@@ -123,7 +123,13 @@
                             {% for transaction in transactions[:10] %}
                             <tr>
                                 <td>
-                                    <span class="wallet-badge {{ transaction.wallet|lower }}">{{ transaction.wallet }}</span>
+                                    {% if transaction.wallet == 'ONE Cash' %}
+                                        <span class="wallet-badge" style="background: linear-gradient(90deg, #fd7e14, #f8630d);">{{ transaction.wallet }}</span>
+                                    {% elif transaction.wallet == 'KuraimiIMB' %}
+                                        <span class="wallet-badge" style="background: linear-gradient(90deg, #8b30dd, #6f18c8);">{{ transaction.wallet }}</span>
+                                    {% else %}
+                                        <span class="wallet-badge {{ transaction.wallet|lower }}">{{ transaction.wallet }}</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <span class="{{ 'transaction-credit' if transaction.type == 'credit' else 'transaction-debit' }}">

@@ -23,6 +23,10 @@
             --jawali-color-end: #fd7e14;
             --cash-color-start: #fd7e14;
             --cash-color-end: #dc3545;
+            --kuraimiimb-color-start: #8b30dd;
+            --kuraimiimb-color-end: #6f18c8;
+            --one-cash-color-start: #fd7e14;
+            --one-cash-color-end: #f8630d;
         }
         
         body {
@@ -109,24 +113,6 @@
             box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
         }
         
-        .footer {
-            background: linear-gradient(90deg, var(--primary-gradient-mid), var(--primary-gradient-start));
-            color: white;
-            padding: 20px 0;
-            margin-top: 50px;
-        }
-        
-        .footer a {
-            color: white;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-        
-        .footer a:hover {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: underline;
-        }
-        
         .alert {
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -204,6 +190,14 @@
             background: linear-gradient(90deg, var(--cash-color-start), var(--cash-color-end));
         }
         
+        .wallet-kuraimiimb .card-header {
+            background: linear-gradient(90deg, var(--kuraimiimb-color-start), var(--kuraimiimb-color-end));
+        }
+        
+        .wallet-one-cash .card-header {
+            background: linear-gradient(90deg, var(--one-cash-color-start), var(--one-cash-color-end));
+        }
+        
         /* Wallet header styling */
         .wallet-header .card {
             border-radius: 15px;
@@ -269,6 +263,14 @@
             background: linear-gradient(90deg, var(--cash-color-start), var(--cash-color-end));
         }
         
+        .wallet-badge.kuraimiimb {
+            background: linear-gradient(90deg, var(--kuraimiimb-color-start), var(--kuraimiimb-color-end));
+        }
+        
+        .wallet-badge.one-cash {
+            background: linear-gradient(90deg, var(--one-cash-color-start), var(--one-cash-color-end));
+        }
+        
         /* Text colors */
         .text-primary {
             color: var(--primary-gradient-start) !important;
@@ -280,6 +282,15 @@
         
         .text-orange {
             color: var(--primary-gradient-end) !important;
+        }
+        
+        /* نمط للفوتر البسيط مع نفس لون الهيدر */
+        .simple-footer {
+            background: linear-gradient(90deg, var(--primary-gradient-start), var(--primary-gradient-mid));
+            color: white;
+            padding: 15px 0;
+            margin-top: 50px;
+            text-align: center;
         }
         
         /* Responsive adjustments */
@@ -410,29 +421,10 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer mt-auto py-3">
+    <!-- فوتر مختصر -->
+    <footer class="simple-footer">
         <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>محلل رسائل المحافظ</h5>
-                    <p>تطبيق لتحليل وعرض كشف حساب للعمليات من رسائل المحافظ المختلفة.</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <h5>روابط سريعة</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="{{ url_for('index') }}">الرئيسية</a></li>
-                        <li><a href="#" data-bs-toggle="modal" data-bs-target="#uploadModal">رفع رسائل</a></li>
-                        <li><a href="{{ url_for('export_data') }}" target="_blank">تصدير البيانات</a></li>
-                    </ul>
-                </div>
-            </div>
-            <hr class="my-2 bg-light">
-            <div class="row">
-                <div class="col-12 text-center">
-                    <p class="mb-0">&copy; {{ now.year }} جميع الحقوق محفظوه ل .MetaBit .</p>
-                </div>
-            </div>
+            <small>&copy; {{ now.year }} جميع الحقوق محفوظة لـ MetaBit</small>
         </div>
     </footer>
 

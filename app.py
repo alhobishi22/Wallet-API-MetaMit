@@ -571,7 +571,8 @@ def generate_wallet_charts(transactions):
 def index():
     """Render the home page."""
     try:
-        transactions = Transaction.query.all()
+        # تعديل طريقة جلب المعاملات ليتم ترتيبها حسب التاريخ الأحدث
+        transactions = Transaction.query.order_by(Transaction.timestamp.desc()).all()
         wallets = {}
         for transaction in transactions:
             if transaction.wallet not in wallets:
