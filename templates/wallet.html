@@ -259,7 +259,27 @@
                                 <td>{{ transaction.details }}</td>
                                 <td>{{ transaction.counterparty if transaction.counterparty else '-' }}</td>
                                 <td>{{ transaction.balance|round(2) if transaction.balance else '-' }}</td>
-                                <td>{{ transaction.timestamp|yemen_time }}</td>
+                                <td>
+                                {% if transaction.timestamp %}
+                                    {# تحويل الوقت إلى نظام 12 ساعة #}
+                                    {% set hour = transaction.timestamp.strftime('%H')|int %}
+                                    {% set minutes = transaction.timestamp.strftime('%M') %}
+                                    {% set seconds = transaction.timestamp.strftime('%S') %}
+                                    {% set date = transaction.timestamp.strftime('%Y-%m-%d') %}
+                                    
+                                    {% if hour > 12 %}
+                                        {{ '%02d' % (hour - 12) }}:{{ minutes }}:{{ seconds }} م {{ date }}
+                                    {% elif hour == 12 %}
+                                        {{ '%02d' % hour }}:{{ minutes }}:{{ seconds }} م {{ date }}
+                                    {% elif hour == 0 %}
+                                        12:{{ minutes }}:{{ seconds }} ص {{ date }}
+                                    {% else %}
+                                        {{ '%02d' % hour }}:{{ minutes }}:{{ seconds }} ص {{ date }}
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                                </td>
                                 <td>
                                     {% if transaction.is_confirmed %}
                                         <span class="badge bg-success" title="الرصيد يتطابق مع العمليات السابقة">
