@@ -35,7 +35,7 @@ CURRENCIES = {
 }
 
 # Define wallet types
-WALLET_TYPES = ['Jaib', 'Jawali', 'Cash']
+WALLET_TYPES = ['Jaib', 'Jawali', 'Cash', 'KuraimiIMB', 'ONE Cash']
 
 def parse_jaib_sms(message):
     """Parse SMS messages from Jaib wallet."""
@@ -131,7 +131,7 @@ def parse_cash_sms(message):
             transaction['counterparty'] = sender_match.group(1).strip()
         
         # Extract balance
-        balance_match = re.search(r'رصيدك(\d+(?:\.\d+)?) ([A-Z]+)', message)
+        balance_match = re.search(r'رصيدك(\d+(?:\.\d+)?)([A-Z]+)', message)
         if balance_match:
             transaction['balance'] = float(balance_match.group(1))
             transaction['balance_currency'] = balance_match.group(2)
@@ -156,6 +156,131 @@ def parse_cash_sms(message):
     
     return transaction
 
+def parse_kuraimi_sms(message):
+    """Parse SMS messages from KuraimiIMB bank."""
+    transaction = {}
+    
+    # Check if it's a credit or debit transaction
+    if 'أودع' in message:
+        transaction['type'] = 'credit'
+        # Extract sender
+        sender_match = re.search(r'أودع/(.+?) لحسابك', message)
+        if sender_match:
+            transaction['counterparty'] = sender_match.group(1).strip()
+        
+        # Extract amount and currency
+        amount_match = re.search(r'لحسابك(\d+(?:[\.\,]\d+)?) ([A-Z]+)', message)
+        if amount_match:
+            # Handle amount with decimal separator (both . and ،)
+            amount_str = amount_match.group(1).replace('٫', '.')
+            transaction['amount'] = float(amount_str)
+            transaction['currency'] = amount_match.group(2)
+        
+        # Extract balance
+        balance_match = re.search(r'رصيدك(\d+(?:[\.\,]\d+)?)([A-Z]+)', message)
+        if balance_match:
+            # Handle balance with decimal separator (both . and ،)
+            balance_str = balance_match.group(1).replace('٫', '.')
+            transaction['balance'] = float(balance_str)
+            transaction['balance_currency'] = balance_match.group(2)
+        
+        transaction['details'] = 'إيداع في الحساب'
+    
+    elif 'تم تحويل' in message:
+        transaction['type'] = 'debit'
+        # Extract amount
+        amount_match = re.search(r'تم تحويل(\d+(?:[\.\,]\d+)?)', message)
+        if amount_match:
+            # Handle amount with decimal separator (both . and ،)
+            amount_str = amount_match.group(1).replace('٫', '.')
+            transaction['amount'] = float(amount_str)
+        
+        # Extract recipient
+        recipient_match = re.search(r'لحساب (.+?) رصيدك', message)
+        if recipient_match:
+            transaction['counterparty'] = recipient_match.group(1).strip()
+        
+        # Extract balance and currency
+        balance_match = re.search(r'رصيدك(\d+(?:[\.\,]\d+)?)([A-Z]+)', message)
+        if balance_match:
+            # Handle balance with decimal separator (both . and ،)
+            balance_str = balance_match.group(1).replace('٫', '.')
+            transaction['balance'] = float(balance_str)
+            transaction['balance_currency'] = balance_match.group(2)
+            transaction['currency'] = balance_match.group(2)
+        
+        transaction['details'] = 'تحويل من الحساب'
+        
+        # Extract received date if available
+        date_match = re.search(r'Received At: (.+)', message)
+        if date_match:
+            transaction['received_at'] = date_match.group(1).strip()
+    
+    return transaction
+
+def parse_onecash_sms(message):
+    """Parse SMS messages from ONE Cash wallet."""
+    transaction = {}
+    
+    # Check if it's a credit transaction (received money)
+    if 'استلمت' in message:
+        transaction['type'] = 'credit'
+        
+        # Extract amount
+        amount_match = re.search(r'استلمت ([0-9,.]+)', message)
+        if amount_match:
+            amount_str = amount_match.group(1).replace(',', '')
+            transaction['amount'] = float(amount_str)
+        
+        # Extract sender
+        sender_match = re.search(r'من (.+?)\n', message)
+        if sender_match:
+            transaction['counterparty'] = sender_match.group(1).strip()
+        
+        # Extract balance and currency
+        balance_match = re.search(r'رصيدك([0-9,.]+) (ر\.ي)', message)
+        if balance_match:
+            balance_str = balance_match.group(1).replace(',', '')
+            transaction['balance'] = float(balance_str)
+            currency_raw = balance_match.group(2).strip()
+            transaction['balance_currency'] = CURRENCIES.get(currency_raw, currency_raw)
+            transaction['currency'] = CURRENCIES.get(currency_raw, currency_raw)
+        
+        transaction['details'] = 'استلام مبلغ'
+    
+    # Check if it's a debit transaction (sent money)
+    elif 'حولت' in message:
+        transaction['type'] = 'debit'
+        
+        # Extract amount
+        amount_match = re.search(r'حولت([0-9,.]+)', message)
+        if amount_match:
+            amount_str = amount_match.group(1).replace(',', '')
+            transaction['amount'] = float(amount_str)
+        
+        # Extract recipient
+        recipient_match = re.search(r'لـ(.+?)\n', message)
+        if recipient_match:
+            transaction['counterparty'] = recipient_match.group(1).strip()
+        
+        # Extract fees if available
+        fees_match = re.search(r'رسوم ([0-9,.]+)', message)
+        if fees_match:
+            transaction['fees'] = float(fees_match.group(1).replace(',', ''))
+        
+        # Extract balance and currency
+        balance_match = re.search(r'رصيدك ([0-9,.]+)(ر\.ي)', message)
+        if balance_match:
+            balance_str = balance_match.group(1).replace(',', '')
+            transaction['balance'] = float(balance_str)
+            currency_raw = balance_match.group(2).strip()
+            transaction['balance_currency'] = CURRENCIES.get(currency_raw, currency_raw)
+            transaction['currency'] = CURRENCIES.get(currency_raw, currency_raw)
+        
+        transaction['details'] = 'تحويل مبلغ'
+    
+    return transaction
+
 def parse_sms(sms_text):
     """Parse SMS text to extract transaction data."""
     transactions = []
@@ -175,19 +300,45 @@ def parse_sms(sms_text):
         wallet_name = wallet_match.group(1).strip()
         message_body = message.replace(wallet_match.group(0), '').strip()
         
+        # اطبع اسم المحفظة ونص الرسالة للتشخيص
+        print(f"محاولة تحليل رسالة من المحفظة: '{wallet_name}'")
+        print(f"محتوى الرسالة: '{message_body[:50]}...'")
+        
         transaction = None
-        if 'Jaib' in wallet_name:
+        
+        # تعديل طريقة التعرف على المحافظ لتكون أكثر مرونة
+        if wallet_name == 'Jaib':
             transaction = parse_jaib_sms(message_body)
-        elif 'Jawali' in wallet_name:
+        elif wallet_name == 'Jawali':
             transaction = parse_jawali_sms(message_body)
-        elif 'Cash' in wallet_name:
+        elif wallet_name == 'Cash':
             transaction = parse_cash_sms(message_body)
+        elif wallet_name == 'KuraimiIMB':
+            print("تحليل رسالة بنك الكريمي...")
+            transaction = parse_kuraimi_sms(message_body)
+        elif wallet_name == 'ONE Cash':
+            print("تحليل رسالة ون كاش...")
+            transaction = parse_onecash_sms(message_body)
+        # إضافة التعرف على المحافظ من خلال محتوى الرسالة إذا كان اسم المحفظة غير معروف
+        elif 'أودع' in message_body or 'تم تحويل' in message_body:
+            if any(currency in message_body for currency in ['SAR', 'YER', 'USD']):
+                print(f"تم اكتشاف رسالة بنك الكريمي من المحتوى، اسم المحفظة: {wallet_name}")
+                transaction = parse_kuraimi_sms(message_body)
+                wallet_name = 'KuraimiIMB'  # تعيين اسم المحفظة إلى القيمة الصحيحة
+        elif 'استلمت' in message_body or 'حولت' in message_body:
+            if 'ر.ي' in message_body:
+                print(f"تم اكتشاف رسالة ون كاش من المحتوى، اسم المحفظة: {wallet_name}")
+                transaction = parse_onecash_sms(message_body)
+                wallet_name = 'ONE Cash'  # تعيين اسم المحفظة إلى القيمة الصحيحة
         
         if transaction:
+            print(f"تم اكتشاف معاملة صالحة: {transaction}")
             transaction['wallet'] = wallet_name
             transaction['raw_message'] = message
             transaction['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             transactions.append(transaction)
+        else:
+            print(f"لم يتم اكتشاف معاملة صالحة من الرسالة")
     
     return transactions
 
@@ -338,6 +489,109 @@ def generate_charts(transactions):
         charts['amount_distribution'] = img_base64
     
     plt.close()
+    
+    return charts
+
+def generate_wallet_charts(transactions, wallet_name):
+    """Generate charts for a specific wallet's transaction visualization."""
+    if not transactions:
+        return {}
+    
+    df = pd.DataFrame(transactions)
+    charts = {}
+    
+    # Ensure required columns exist
+    required_columns = ['currency', 'type', 'amount']
+    if not all(col in df.columns for col in required_columns):
+        return charts
+    
+    # Transaction type distribution by currency for this wallet
+    plt.figure(figsize=(10, 6))
+    
+    for currency in df['currency'].unique():
+        currency_df = df[df['currency'] == currency]
+        
+        # Count transactions by type
+        type_counts = currency_df['type'].value_counts()
+        
+        plt.bar(
+            [f"{currency} - {t}" for t in type_counts.index],
+            type_counts.values
+        )
+    
+    plt.title(f'أنواع المعاملات حسب العملة - {wallet_name}')
+    plt.xlabel('العملة - نوع المعاملة')
+    plt.ylabel('عدد المعاملات')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    # Save to BytesIO
+    img_bytes = BytesIO()
+    plt.savefig(img_bytes, format='png')
+    img_bytes.seek(0)
+    
+    # Convert to base64 for embedding in HTML
+    img_base64 = base64.b64encode(img_bytes.read()).decode('utf-8')
+    charts['transaction_types'] = img_base64
+    
+    plt.close()
+    
+    # Amount distribution by currency and type for this wallet
+    plt.figure(figsize=(10, 6))
+    
+    # Group by currency and type, sum amounts
+    if len(df) > 0:
+        grouped = df.groupby(['currency', 'type'])['amount'].sum().unstack()
+        grouped.plot(kind='bar', ax=plt.gca())
+        
+        plt.title(f'مبالغ المعاملات حسب العملة والنوع - {wallet_name}')
+        plt.xlabel('العملة')
+        plt.ylabel('إجمالي المبلغ')
+        plt.legend(title='نوع المعاملة')
+        plt.tight_layout()
+        
+        # Save to BytesIO
+        img_bytes = BytesIO()
+        plt.savefig(img_bytes, format='png')
+        img_bytes.seek(0)
+        
+        # Convert to base64 for embedding in HTML
+        img_base64 = base64.b64encode(img_bytes.read()).decode('utf-8')
+        charts['amount_distribution'] = img_base64
+    
+    plt.close()
+    
+    # Transaction timeline if we have timestamps
+    if 'timestamp' in df.columns and len(df) > 0:
+        plt.figure(figsize=(12, 6))
+        
+        # Convert timestamp to datetime if it's not already
+        if df['timestamp'].dtype == 'object':
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+        
+        # Group by date and currency
+        df['date'] = df['timestamp'].dt.date
+        timeline = df.groupby(['date', 'currency', 'type'])['amount'].sum().unstack(level=[1, 2]).fillna(0)
+        
+        if not timeline.empty and timeline.shape[1] > 0:
+            timeline.plot(kind='line', marker='o', ax=plt.gca())
+            
+            plt.title(f'تطور المعاملات عبر الزمن - {wallet_name}')
+            plt.xlabel('التاريخ')
+            plt.ylabel('المبلغ')
+            plt.grid(True, linestyle='--', alpha=0.7)
+            plt.tight_layout()
+            
+            # Save to BytesIO
+            img_bytes = BytesIO()
+            plt.savefig(img_bytes, format='png')
+            img_bytes.seek(0)
+            
+            # Convert to base64 for embedding in HTML
+            img_base64 = base64.b64encode(img_bytes.read()).decode('utf-8')
+            charts['timeline'] = img_base64
+        
+        plt.close()
     
     return charts
 
@@ -600,24 +854,27 @@ def receive_sms():
             
             # Try to get the formatted text from JSON (as shown in the screenshot)
             if request.is_json:
-                data = request.get_json()
-                print(f"Processing JSON data: {data}")
-                
-                if 'text' in data:
-                    formatted_text = data.get('text', '')
-                    print(f"Found formatted text: {formatted_text}")
+                try:
+                    data = request.get_json()
+                    print(f"Processing JSON data: {data}")
                     
-                    # The format should be "From: {sender}<br>{msg}"
-                    if '<br>' in formatted_text:
-                        parts = formatted_text.split('<br>', 1)
-                        if len(parts) == 2 and parts[0].startswith('From:'):
-                            sender = parts[0].replace('From:', '').strip()
-                            sms_text = parts[1].strip()
-                            print(f"Successfully parsed formatted text - Sender: '{sender}', Text: '{sms_text}'")
+                    if 'text' in data:
+                        formatted_text = data.get('text', '')
+                        print(f"Found formatted text: {formatted_text}")
+                        
+                        # The format should be "From: {sender}<br>{msg}"
+                        if '<br>' in formatted_text:
+                            parts = formatted_text.split('<br>', 1)
+                            if len(parts) == 2 and parts[0].startswith('From:'):
+                                sender = parts[0].replace('From:', '').strip()
+                                sms_text = parts[1].strip()
+                                print(f"Successfully parsed formatted text - Sender: '{sender}', Text: '{sms_text}'")
+                            else:
+                                print(f"Formatted text doesn't match expected format: {formatted_text}")
                         else:
-                            print(f"Formatted text doesn't match expected format: {formatted_text}")
-                    else:
-                        print(f"No <br> found in formatted text: {formatted_text}")
+                            print(f"No <br> found in formatted text: {formatted_text}")
+                except Exception as e:
+                    print(f"Error parsing JSON: {e}")
             
             # If we couldn't extract from the formatted text, try other methods
             if not sms_text:
@@ -678,46 +935,17 @@ def receive_sms():
                 sender = "Unknown"
                 print(f"Using default sender: {sender}")
             
-            # Format the SMS in the expected format
-            formatted_sms = f"From: {sender} \n{sms_text}"
-            print(f"Formatted SMS: {formatted_sms}")
-            
-            # Parse and save the SMS
-            transactions = parse_sms(formatted_sms)
-            print(f"Parsed transactions: {transactions}")
-            
-            if transactions:
-                num_saved = save_transactions(transactions)
-                print(f"Saved {num_saved} transactions")
-                return jsonify({
-                    'status': 'success',
-                    'message': f'Successfully processed {num_saved} transactions',
-                    'transactions': transactions
-                }), 200
-            else:
-                print("No valid transactions found in the SMS")
-                return jsonify({
-                    'status': 'warning',
-                    'message': 'No valid transactions found in the SMS'
-                }), 200
-        
-        elif request.method == 'GET':
-            # Handle GET request (for testing)
-            sms_text = request.args.get('msg', '')
-            if not sms_text:
-                sms_text = request.args.get('text', '')
-                
-            sender = request.args.get('sender', '')
-            
-            if not sms_text:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'No SMS text provided'
-                }), 400
-            
-            # إذا كان sender فارغًا، استخدم قيمة افتراضية
-            if not sender:
-                sender = "Unknown"
+            # Try to detect wallet type from message content if sender is not recognized
+            if sender not in WALLET_TYPES:
+                # Check for Kuraimi patterns in the message
+                if 'أودع' in sms_text or 'تم تحويل' in sms_text and 'رصيدك' in sms_text:
+                    if any(currency in sms_text for currency in ['SAR', 'YER', 'USD']):
+                        print(f"Detected KuraimiIMB from message content, changing sender from '{sender}' to 'KuraimiIMB'")
+                        sender = 'KuraimiIMB'
+                # Check for ONE Cash patterns in the message
+                elif ('استلمت' in sms_text or 'حولت' in sms_text) and 'ر.ي' in sms_text:
+                    print(f"Detected ONE Cash from message content, changing sender from '{sender}' to 'ONE Cash'")
+                    sender = 'ONE Cash'
             
             # Format the SMS in the expected format
             formatted_sms = f"From: {sender} \n{sms_text}"
@@ -737,6 +965,7 @@ def receive_sms():
                     'status': 'warning',
                     'message': 'No valid transactions found in the SMS'
                 }), 200
+    
     except Exception as e:
         print(f"Error in receive_sms: {e}")
         import traceback
@@ -750,109 +979,6 @@ def receive_sms():
         'status': 'error',
         'message': 'Invalid request'
     }), 400
-
-def generate_wallet_charts(transactions, wallet_name):
-    """Generate charts for a specific wallet's transaction visualization."""
-    if not transactions:
-        return {}
-    
-    df = pd.DataFrame(transactions)
-    charts = {}
-    
-    # Ensure required columns exist
-    required_columns = ['currency', 'type', 'amount']
-    if not all(col in df.columns for col in required_columns):
-        return charts
-    
-    # Transaction type distribution by currency for this wallet
-    plt.figure(figsize=(10, 6))
-    
-    for currency in df['currency'].unique():
-        currency_df = df[df['currency'] == currency]
-        
-        # Count transactions by type
-        type_counts = currency_df['type'].value_counts()
-        
-        plt.bar(
-            [f"{currency} - {t}" for t in type_counts.index],
-            type_counts.values
-        )
-    
-    plt.title(f'أنواع المعاملات حسب العملة - {wallet_name}')
-    plt.xlabel('العملة - نوع المعاملة')
-    plt.ylabel('عدد المعاملات')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    
-    # Save to BytesIO
-    img_bytes = BytesIO()
-    plt.savefig(img_bytes, format='png')
-    img_bytes.seek(0)
-    
-    # Convert to base64 for embedding in HTML
-    img_base64 = base64.b64encode(img_bytes.read()).decode('utf-8')
-    charts['transaction_types'] = img_base64
-    
-    plt.close()
-    
-    # Amount distribution by currency and type for this wallet
-    plt.figure(figsize=(10, 6))
-    
-    # Group by currency and type, sum amounts
-    if len(df) > 0:
-        grouped = df.groupby(['currency', 'type'])['amount'].sum().unstack()
-        grouped.plot(kind='bar', ax=plt.gca())
-        
-        plt.title(f'مبالغ المعاملات حسب العملة والنوع - {wallet_name}')
-        plt.xlabel('العملة')
-        plt.ylabel('إجمالي المبلغ')
-        plt.legend(title='نوع المعاملة')
-        plt.tight_layout()
-        
-        # Save to BytesIO
-        img_bytes = BytesIO()
-        plt.savefig(img_bytes, format='png')
-        img_bytes.seek(0)
-        
-        # Convert to base64 for embedding in HTML
-        img_base64 = base64.b64encode(img_bytes.read()).decode('utf-8')
-        charts['amount_distribution'] = img_base64
-    
-    plt.close()
-    
-    # Transaction timeline if we have timestamps
-    if 'timestamp' in df.columns and len(df) > 0:
-        plt.figure(figsize=(12, 6))
-        
-        # Convert timestamp to datetime if it's not already
-        if df['timestamp'].dtype == 'object':
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
-        
-        # Group by date and currency
-        df['date'] = df['timestamp'].dt.date
-        timeline = df.groupby(['date', 'currency', 'type'])['amount'].sum().unstack(level=[1, 2]).fillna(0)
-        
-        if not timeline.empty and timeline.shape[1] > 0:
-            timeline.plot(kind='line', marker='o', ax=plt.gca())
-            
-            plt.title(f'تطور المعاملات عبر الزمن - {wallet_name}')
-            plt.xlabel('التاريخ')
-            plt.ylabel('المبلغ')
-            plt.grid(True, linestyle='--', alpha=0.7)
-            plt.tight_layout()
-            
-            # Save to BytesIO
-            img_bytes = BytesIO()
-            plt.savefig(img_bytes, format='png')
-            img_bytes.seek(0)
-            
-            # Convert to base64 for embedding in HTML
-            img_base64 = base64.b64encode(img_bytes.read()).decode('utf-8')
-            charts['timeline'] = img_base64
-        
-        plt.close()
-    
-    return charts
 
 if __name__ == '__main__':
     # Ensure the upload folder exists
