@@ -117,6 +117,7 @@
                                 <th>التفاصيل</th>
                                 <th>الطرف المقابل</th>
                                 <th>الرصيد</th>
+                                <th>الإجراءات</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -141,6 +142,13 @@
                                 <td>{{ transaction.details }}</td>
                                 <td>{{ transaction.counterparty if transaction.counterparty else '-' }}</td>
                                 <td>{{ transaction.balance|round(2) if transaction.balance else '-' }}</td>
+                                <td>
+                                    <form action="{{ url_for('delete_transaction', transaction_id=transaction.id) }}" method="post" style="display:inline;" onsubmit="return confirm('هل أنت متأكد من رغبتك في حذف هذه المعاملة؟')">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-trash"></i> حذف
+                                        </button>
+                                    </form>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>

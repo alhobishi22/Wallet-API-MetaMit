@@ -2,12 +2,18 @@
 
 {% block content %}
 <div class="wallet-header mb-4">
-    <div class="card wallet-{{ wallet_name.lower() }}">
+    {% if wallet_name == "KuraimiIMB" %}
+    <div class="card" style="background: linear-gradient(90deg, #6610f2, #8b30dd); color: white;">
+    {% elif wallet_name == "ONE Cash" %}
+    <div class="card" style="background: linear-gradient(90deg, #fd7e14, #f8630d); color: white;">
+    {% else %}
+    <div class="card" style="background: linear-gradient(90deg, #0d6efd, #0b5ed7); color: white;">
+    {% endif %}
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h3 class="mb-1">محفظة {{ wallet_name }}</h3>
-                    <p class="text-muted mb-0">عرض تفاصيل وإحصائيات المحفظة</p>
+                    <h3 class="mb-1" style="color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">محفظة {{ wallet_name }}</h3>
+                    <p class="mb-0" style="color: rgba(255,255,255,0.8);">عرض تفاصيل وإحصائيات المحفظة</p>
                 </div>
                 <div class="wallet-actions">
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadWalletModal">
@@ -241,6 +247,7 @@
                                 <th>الرصيد</th>
                                 <th>التاريخ</th>
                                 <th>حالة التأكيد</th>
+                                <th>الإجراءات</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -290,6 +297,13 @@
                                             <i class="fas fa-exclamation-triangle"></i> غير مؤكدة
                                         </span>
                                     {% endif %}
+                                </td>
+                                <td>
+                                    <form action="{{ url_for('delete_transaction', transaction_id=transaction.id) }}" method="post" style="display:inline;" onsubmit="return confirm('هل أنت متأكد من رغبتك في حذف هذه المعاملة؟')">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-trash"></i> حذف
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                             {% endfor %}

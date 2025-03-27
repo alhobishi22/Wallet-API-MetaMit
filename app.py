@@ -839,6 +839,26 @@ def clear_wallet_data(wallet_name):
     
     return redirect(url_for('wallet', wallet_name=wallet_name))
 
+@app.route('/delete_transaction/<int:transaction_id>', methods=['POST'])
+def delete_transaction(transaction_id):
+    """حذف معاملة محددة بواسطة معرفها"""
+    try:
+        # البحث عن المعاملة بواسطة المعرف
+        transaction = Transaction.query.get_or_404(transaction_id)
+        wallet_name = transaction.wallet
+        
+        # حذف المعاملة
+        db.session.delete(transaction)
+        db.session.commit()
+        
+        flash('تم حذف المعاملة بنجاح.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'حدث خطأ أثناء حذف المعاملة: {str(e)}', 'danger')
+        
+    # إعادة التوجيه إلى صفحة المحفظة
+    return redirect(url_for('wallet', wallet_name=wallet_name))
+
 @app.route('/export', methods=['GET'])
 def export_data():
     """Export transaction data as JSON."""
