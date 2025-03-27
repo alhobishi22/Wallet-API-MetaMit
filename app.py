@@ -176,13 +176,19 @@ def parse_kuraimi_sms(message):
             transaction['amount'] = float(amount_str)
             transaction['currency'] = amount_match.group(2)
         
-        # Extract balance
-        balance_match = re.search(r'رصيدك(\d+(?:[\.\,]\d+)?)([A-Z]+)', message)
+        # Extract balance - تحسين التعبير النمطي للتعامل مع تنسيق النص بدون مسافات
+        balance_match = re.search(r'رصيدك(\d+(?:[\.٫\,]\d+)?)([A-Z]+)', message)
         if balance_match:
             # Handle balance with decimal separator (both . and ،)
             balance_str = balance_match.group(1).replace('٫', '.')
-            transaction['balance'] = float(balance_str)
-            transaction['balance_currency'] = balance_match.group(2)
+            try:
+                transaction['balance'] = float(balance_str)
+                transaction['balance_currency'] = balance_match.group(2)
+                print(f"تم استخراج الرصيد: {balance_str} {balance_match.group(2)}")
+            except ValueError as e:
+                print(f"خطأ في تحويل الرصيد: {balance_str}, الخطأ: {e}")
+        else:
+            print(f"فشل في العثور على الرصيد في الرسالة: '{message}'")
         
         transaction['details'] = 'إيداع في الحساب'
     
