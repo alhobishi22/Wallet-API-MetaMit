@@ -1,20 +1,25 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
+from flask_bootstrap import Bootstrap
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+import datetime
+import json
 import os
 import re
-import json
-import pandas as pd
-from datetime import datetime
 import pytz
 from babel.dates import format_datetime
+from flask_cors import CORS
+import pandas as pd
+from datetime import datetime
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
-from flask_migrate import Migrate
 from models import db, Transaction
 
 app = Flask(__name__)
+app.config.from_object('config')
 app.secret_key = 'wallet_sms_analyzer_secret_key'
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 
@@ -25,6 +30,12 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # تهيئة قاعدة البيانات وأداة الترحيل
 db.init_app(app)
 migrate = Migrate(app, db)
+
+# إعداد CORS للسماح بالطلبات من نطاقات محددة
+CORS(app, resources={r"/api/*": {"origins": "*"}})  # في الإنتاج، قم بتحديد النطاقات بدلاً من "*"
+
+# مفتاح API السري - في الإنتاج، يجب تخزينه في متغيرات البيئة أو ملف التهيئة
+API_KEY = "MetaBit_API_Key_24X7"
 
 # Define wallet types
 WALLET_TYPES = ['Jaib', 'Jawali', 'Cash', 'KuraimiIMB', 'ONE Cash']
@@ -1019,6 +1030,183 @@ def receive_sms():
         'status': 'error',
         'message': 'Invalid request'
     }), 400
+
+# ====== واجهة برمجة التطبيقات (API) ======
+
+# دالة مساعدة للتحقق من مفتاح API
+def verify_api_key():
+    """التحقق من صحة مفتاح API المقدم في طلب API"""
+    api_key = request.headers.get('X-API-Key')
+    if not api_key or api_key != API_KEY:
+        return False
+    return True
+
+@app.route('/api/wallets', methods=['GET'])
+def api_get_wallets():
+    """الحصول على قائمة المحافظ المتاحة"""
+    if not verify_api_key():
+        return jsonify({"error": "غير مصرح به", "code": 401}), 401
+    
+    # الحصول على المحافظ الفريدة من قاعدة البيانات
+    wallets = db.session.query(Transaction.wallet).distinct().all()
+    wallet_list = [wallet[0] for wallet in wallets]
+    
+    return jsonify({
+        "status": "success",
+        "wallets": wallet_list,
+        "count": len(wallet_list)
+    })
+
+@app.route('/api/transactions', methods=['GET'])
+def api_get_transactions():
+    """الحصول على جميع المعاملات مع دعم التصفية والترتيب"""
+    if not verify_api_key():
+        return jsonify({"error": "غير مصرح به", "code": 401}), 401
+    
+    # معلمات التصفية الاختيارية
+    wallet = request.args.get('wallet')
+    currency = request.args.get('currency')
+    transaction_type = request.args.get('type')  # credit/debit
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    limit = request.args.get('limit', default=100, type=int)
+    
+    # بناء الاستعلام الأساسي
+    query = Transaction.query
+    
+    # تطبيق الفلاتر
+    if wallet:
+        query = query.filter_by(wallet=wallet)
+    if currency:
+        query = query.filter_by(currency=currency)
+    if transaction_type:
+        query = query.filter_by(type=transaction_type)
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+            query = query.filter(Transaction.timestamp >= start_date_obj)
+        except ValueError:
+            return jsonify({"error": "تنسيق تاريخ البداية غير صالح. استخدم YYYY-MM-DD"}), 400
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+            # إضافة يوم واحد لتضمين معاملات اليوم المحدد
+            end_date_obj = end_date_obj.replace(hour=23, minute=59, second=59)
+            query = query.filter(Transaction.timestamp <= end_date_obj)
+        except ValueError:
+            return jsonify({"error": "تنسيق تاريخ النهاية غير صالح. استخدم YYYY-MM-DD"}), 400
+    
+    # ترتيب النتائج تنازليًا حسب التاريخ
+    query = query.order_by(Transaction.timestamp.desc())
+    
+    # تطبيق الحد
+    if limit:
+        query = query.limit(limit)
+    
+    # تنفيذ الاستعلام
+    transactions = query.all()
+    
+    # تحويل النتائج إلى JSON
+    result = []
+    for transaction in transactions:
+        result.append({
+            'id': transaction.id,
+            'transaction_id': transaction.transaction_id,
+            'wallet': transaction.wallet,
+            'type': transaction.type,
+            'amount': transaction.amount,
+            'currency': transaction.currency,
+            'details': transaction.details,
+            'counterparty': transaction.counterparty,
+            'balance': transaction.balance,
+            'timestamp': transaction.timestamp.isoformat() if transaction.timestamp else None,
+            'is_confirmed': transaction.is_confirmed
+        })
+    
+    return jsonify({
+        "status": "success",
+        "count": len(result),
+        "transactions": result
+    })
+
+@app.route('/api/wallets/<wallet_name>/transactions', methods=['GET'])
+def api_get_wallet_transactions(wallet_name):
+    """الحصول على معاملات محفظة محددة"""
+    if not verify_api_key():
+        return jsonify({"error": "غير مصرح به", "code": 401}), 401
+    
+    # التحقق من وجود المحفظة
+    wallet_exists = db.session.query(Transaction.wallet).filter_by(wallet=wallet_name).first()
+    if not wallet_exists:
+        return jsonify({"error": f"المحفظة {wallet_name} غير موجودة", "code": 404}), 404
+    
+    # نقل المعلمات إلى نقطة النهاية العامة مع إضافة معلمة المحفظة
+    request.args = dict(request.args)
+    request.args['wallet'] = wallet_name
+    
+    return api_get_transactions()
+
+@app.route('/api/wallets/<wallet_name>/summary', methods=['GET'])
+def api_get_wallet_summary(wallet_name):
+    """الحصول على ملخص محفظة محددة"""
+    if not verify_api_key():
+        return jsonify({"error": "غير مصرح به", "code": 401}), 401
+    
+    # التحقق من وجود المحفظة
+    wallet_exists = db.session.query(Transaction.wallet).filter_by(wallet=wallet_name).first()
+    if not wallet_exists:
+        return jsonify({"error": f"المحفظة {wallet_name} غير موجودة", "code": 404}), 404
+    
+    # الحصول على العملات المختلفة للمحفظة
+    currencies = db.session.query(Transaction.currency).filter_by(wallet=wallet_name).distinct().all()
+    currencies = [currency[0] for currency in currencies]
+    
+    # تجميع المعلومات لكل عملة
+    summary = {}
+    for currency in currencies:
+        # إجمالي الإيداعات
+        credit_sum = db.session.query(db.func.sum(Transaction.amount)).filter_by(
+            wallet=wallet_name, currency=currency, type='credit'
+        ).scalar() or 0
+        
+        # إجمالي السحوبات
+        debit_sum = db.session.query(db.func.sum(Transaction.amount)).filter_by(
+            wallet=wallet_name, currency=currency, type='debit'
+        ).scalar() or 0
+        
+        # آخر رصيد
+        latest_transaction = Transaction.query.filter_by(
+            wallet=wallet_name, currency=currency
+        ).order_by(Transaction.timestamp.desc()).first()
+        
+        latest_balance = latest_transaction.balance if latest_transaction else 0
+        latest_date = latest_transaction.timestamp.isoformat() if latest_transaction and latest_transaction.timestamp else None
+        
+        # عدد المعاملات
+        transaction_count = Transaction.query.filter_by(
+            wallet=wallet_name, currency=currency
+        ).count()
+        
+        summary[currency] = {
+            'credits': float(credit_sum),
+            'debits': float(debit_sum),
+            'net': float(credit_sum - debit_sum),
+            'latest_balance': float(latest_balance),
+            'latest_transaction_date': latest_date,
+            'transaction_count': transaction_count
+        }
+    
+    return jsonify({
+        "status": "success",
+        "wallet": wallet_name,
+        "summary": summary
+    })
+
+@app.route('/api/docs', methods=['GET'])
+def api_docs():
+    """توثيق واجهة برمجة التطبيقات"""
+    now = datetime.now()  # إضافة متغير التاريخ الحالي
+    return render_template('api_docs.html', now=now)
 
 if __name__ == '__main__':
     # Ensure the upload folder exists
