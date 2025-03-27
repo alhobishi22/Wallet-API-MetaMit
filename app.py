@@ -192,6 +192,9 @@ def parse_kuraimi_sms(message):
     """Parse SMS messages from KuraimiIMB bank."""
     transaction = {}
     
+    # Print debug information to diagnose forwardSMS issues
+    print(f"جاري تحليل رسالة كريمي: {message}")
+    
     # Check if it's a credit or debit transaction
     if 'أودع' in message:
         transaction['type'] = 'credit'
@@ -208,8 +211,31 @@ def parse_kuraimi_sms(message):
             transaction['amount'] = float(amount_str)
             transaction['currency'] = amount_match.group(2)
         
-        # Extract balance - تحسين التعبير النمطي للتعامل مع تنسيق النص بدون مسافات
+        # محاولة استخراج الرصيد بعدة صيغ مختلفة
+        # الصيغة الأولى: رصيدك مباشرة متبوعًا بالرقم والعملة (مثل رصيدك1669521٫31YER)
         balance_match = re.search(r'رصيدك(\d+(?:[\.٫\,]\d+)?)([A-Z]+)', message)
+        
+        # إذا لم يجد الصيغة الأولى، نجرب الصيغة الثانية مع وجود مسافات محتملة
+        if not balance_match:
+            balance_match = re.search(r'رصيدك\s*(\d+(?:[\.٫\,]\d+)?)\s*([A-Z]+)', message)
+        
+        # إذا لم يجد أيضًا، نجرب الصيغة الثالثة بدون كلمة "رصيدك" (للعملات الأخرى)
+        if not balance_match:
+            balance_match = re.search(r'([A-Z]+)رصيدك\s*(\d+(?:[\.٫\,]\d+)?)', message)
+            if balance_match:
+                # في هذه الحالة ترتيب المجموعات مختلف
+                balance_currency = balance_match.group(1)
+                balance_str = balance_match.group(2).replace('٫', '.')
+                try:
+                    transaction['balance'] = float(balance_str)
+                    transaction['balance_currency'] = balance_currency
+                    print(f"تم استخراج الرصيد (الصيغة 3): {balance_str} {balance_currency}")
+                except ValueError as e:
+                    print(f"خطأ في تحويل الرصيد: {balance_str}, الخطأ: {e}")
+                
+                transaction['details'] = 'إيداع في الحساب'
+                return transaction
+        
         if balance_match:
             # Handle balance with decimal separator (both . and ،)
             balance_str = balance_match.group(1).replace('٫', '.')
@@ -929,7 +955,7 @@ def receive_sms():
             # Try to detect wallet type from message content if sender is not recognized
             if sender not in WALLET_TYPES:
                 # Check for Kuraimi patterns in the message
-                if 'أودع' in sms_text or 'تم تحويل' in sms_text and 'رصيدك' in sms_text:
+                if ('أودع' in sms_text or 'تم تحويل' in sms_text) and ('رصيدك' in sms_text or 'لحسابك' in sms_text):
                     if any(currency in sms_text for currency in ['SAR', 'YER', 'USD']):
                         print(f"Detected KuraimiIMB from message content, changing sender from '{sender}' to 'KuraimiIMB'")
                         sender = 'KuraimiIMB'
@@ -938,11 +964,14 @@ def receive_sms():
                     print(f"Detected ONE Cash from message content, changing sender from '{sender}' to 'ONE Cash'")
                     sender = 'ONE Cash'
             
-            # Format the SMS in the expected format
+            # Format the SMS in the expected format and clean any newlines or HTML characters
+            sms_text = sms_text.replace('<br>', '\n').replace('&nbsp;', ' ')
             formatted_sms = f"From: {sender} \n{sms_text}"
+            print(f"Formatted SMS for processing: {formatted_sms}")
             
             # Parse and save the SMS
             transactions = parse_sms(formatted_sms)
+            print(f"Parsed transactions: {transactions}")
             
             if transactions:
                 num_saved = save_transactions(transactions)
@@ -956,7 +985,6 @@ def receive_sms():
                     'status': 'warning',
                     'message': 'No valid transactions found in the SMS'
                 }), 200
-    
     except Exception as e:
         print(f"Error in receive_sms: {e}")
         import traceback
