@@ -46,13 +46,17 @@
             align-items: center;
         }
         
-        .logo-svg {
+        .logo-image {
             height: 40px;
             margin-left: 10px;
+            background-color: white;
+            padding: 5px;
+            border-radius: 50%;
+            box-shadow: 0px 0px 5px rgba(0,0,0,0.2);
             transition: transform 0.3s ease;
         }
         
-        .logo-svg:hover {
+        .logo-image:hover {
             transform: scale(1.1);
         }
         
@@ -299,7 +303,7 @@
                 margin-bottom: 15px;
             }
             
-            .logo-svg {
+            .logo-image {
                 height: 30px;
             }
             
@@ -309,26 +313,31 @@
                 gap: 10px;
             }
         }
+        
+        /* تنسيق زر الرئيسية */
+        .home-button {
+            background: linear-gradient(90deg, var(--primary-gradient-start), var(--primary-gradient-mid));
+            color: white !important;
+            padding: 8px 15px !important;
+            border-radius: 20px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .home-button:hover {
+            background: linear-gradient(90deg, var(--primary-gradient-mid), var(--primary-gradient-end));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
-                <svg class="logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#0d6efd" />
-                            <stop offset="50%" stop-color="#6610f2" />
-                            <stop offset="100%" stop-color="#fd7e14" />
-                        </linearGradient>
-                    </defs>
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="url(#logo-gradient)" stroke-width="8" />
-                    <path d="M30 50 L45 65 L70 35" stroke="url(#logo-gradient)" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                محلل رسائل المحافظ
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="شعار MetaBitAnalysis" class="logo-image">
+                MetaBit Analysis
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -336,18 +345,13 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">
+                        <a class="nav-link home-button" href="{{ url_for('index') }}">
                             <i class="fas fa-home"></i> الرئيسية
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#uploadModal">
                             <i class="fas fa-upload"></i> رفع رسائل
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('export_data') }}" target="_blank">
-                            <i class="fas fa-file-export"></i> تصدير البيانات
                         </a>
                     </li>
                 </ul>
@@ -424,7 +428,7 @@
     <!-- فوتر مختصر -->
     <footer class="simple-footer">
         <div class="container">
-            <small>&copy; {{ now.year }} جميع الحقوق محفوظة لـ MetaBit</small>
+            <small>&copy; {{ now.year }} جميع الحقوق محفوظة لـ MetaBit Analysis</small>
         </div>
     </footer>
 
