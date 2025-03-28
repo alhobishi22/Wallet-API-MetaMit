@@ -175,25 +175,30 @@ def parse_jawali_sms(message):
     
     return transaction
 
+import re  # تأكد من وجود هذا السطر في أعلى الملف
+
 def parse_cash_sms(message):
     """Parse SMS messages from Cash wallet."""
     transaction = {}
     
     if 'إضافة' in message:
         transaction['type'] = 'credit'
-        # Extract amount and currency
-        amount_match = re.search(r'إضافة(\d+(?:\.\d+)?) ([A-Z]+)', message)
+        # استخراج المبلغ والعملة مع السماح بوجود مسافات اختيارية
+        # تم تعديل التعبير النمطي هنا (مثلاً، السطر 5-6)
+        amount_match = re.search(r'إضافة\s*(\d+(?:\.\d+)?)\s*([A-Z]+)', message)
         if amount_match:
             transaction['amount'] = float(amount_match.group(1))
             transaction['currency'] = amount_match.group(2)
         
-        # Extract sender
-        sender_match = re.search(r'من (.+?) رصيدك', message)
+        # استخراج جهة الإرسال (المُرسِل)
+        # تم تعديل التعبير النمطي للسماح بمسافات إضافية (مثلاً، السطر 9-10)
+        sender_match = re.search(r'من\s+(.+?)\s+رصيدك', message)
         if sender_match:
             transaction['counterparty'] = sender_match.group(1).strip()
         
-        # Extract balance
-        balance_match = re.search(r'رصيدك(\d+(?:\.\d+)?)([A-Z]+)', message)
+        # استخراج الرصيد والعملة الخاصة به
+        # تم تعديل التعبير النمطي للسماح بمسافات اختيارية (مثلاً، السطر 13-14)
+        balance_match = re.search(r'رصيدك\s*(\d+(?:\.\d+)?)\s*([A-Z]+)', message)
         if balance_match:
             transaction['balance'] = float(balance_match.group(1))
             transaction['balance_currency'] = balance_match.group(2)
@@ -202,14 +207,16 @@ def parse_cash_sms(message):
     
     elif 'سحب' in message:
         transaction['type'] = 'debit'
-        # Extract amount and currency
-        amount_match = re.search(r'سحب (\d+(?:\.\d+)?) ([A-Z]+)', message)
+        # استخراج المبلغ والعملة عند السحب
+        # تم تعديل التعبير النمطي للسماح بمسافات اختيارية (مثلاً، السطر 21-22)
+        amount_match = re.search(r'سحب\s*(\d+(?:\.\d+)?)\s*([A-Z]+)', message)
         if amount_match:
             transaction['amount'] = float(amount_match.group(1))
             transaction['currency'] = amount_match.group(2)
         
-        # Extract balance
-        balance_match = re.search(r'رصيدك (\d+(?:\.\d+)?) ([A-Z]+)', message)
+        # استخراج الرصيد والعملة الخاصة به عند السحب
+        # تم تعديل التعبير النمطي هنا أيضاً (مثلاً، السطر 25-26)
+        balance_match = re.search(r'رصيدك\s*(\d+(?:\.\d+)?)\s*([A-Z]+)', message)
         if balance_match:
             transaction['balance'] = float(balance_match.group(1))
             transaction['balance_currency'] = balance_match.group(2)
