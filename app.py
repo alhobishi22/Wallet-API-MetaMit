@@ -1237,6 +1237,12 @@ def api_docs():
     now = datetime.now()  # إضافة متغير التاريخ الحالي
     return render_template('api_docs.html', now=now)
 
+# إضافة مسار متوافق مع التطبيق الثاني
+@app.route('/api/transactions/wallet/<wallet_name>', methods=['GET'])
+def api_get_transactions_alt_route(wallet_name):
+    """مسار بديل للحصول على معاملات محفظة محددة (للتوافق مع التطبيقات الخارجية)"""
+    return api_get_wallet_transactions(wallet_name)
+
 # تحميل المستخدم لـ Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
