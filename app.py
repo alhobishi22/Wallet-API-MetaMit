@@ -480,7 +480,22 @@ def save_transactions(transactions):
 def load_transactions():
     """Load all transactions from the database."""
     transactions = Transaction.query.all()
-    return [transaction.to_dict() for transaction in transactions]
+    result = []
+    for transaction in transactions:
+        result.append({
+            'id': transaction.id,
+            'transaction_id': transaction.transaction_id,
+            'wallet': transaction.wallet,
+            'type': transaction.type,
+            'amount': float(transaction.amount) if transaction.amount is not None else 0.0,
+            'currency': transaction.currency,
+            'details': transaction.details,
+            'counterparty': transaction.counterparty,
+            'balance': float(transaction.balance) if transaction.balance is not None else 0.0,
+            'timestamp': transaction.timestamp.isoformat() if transaction.timestamp else None,
+            'is_confirmed': transaction.is_confirmed
+        })
+    return result
 
 def generate_transaction_summary(transactions):
     """Generate a summary of transactions organized by wallet and currency."""
@@ -1145,11 +1160,11 @@ def api_get_transactions(specific_wallet=None):
             'transaction_id': transaction.transaction_id,
             'wallet': transaction.wallet,
             'type': transaction.type,
-            'amount': transaction.amount,
+            'amount': float(transaction.amount) if transaction.amount is not None else 0.0,
             'currency': transaction.currency,
             'details': transaction.details,
             'counterparty': transaction.counterparty,
-            'balance': transaction.balance,
+            'balance': float(transaction.balance) if transaction.balance is not None else 0.0,
             'timestamp': transaction.timestamp.isoformat() if transaction.timestamp else None,
             'is_confirmed': transaction.is_confirmed
         })
