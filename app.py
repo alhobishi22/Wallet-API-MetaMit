@@ -16,7 +16,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
-from models import db, Transaction, User 
+from models import db, Transaction, User
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
@@ -1072,46 +1072,39 @@ def verify_api_key():
         return False
     return True
 
-
 @app.route('/api/wallets', methods=['GET'])
 def api_get_wallets():
     """الحصول على قائمة المحافظ المتاحة"""
     if not verify_api_key():
         return jsonify({"error": "غير مصرح به", "code": 401}), 401
-
+    
     # الحصول على المحافظ الفريدة من قاعدة البيانات
     wallets = db.session.query(Transaction.wallet).distinct().all()
     wallet_list = [wallet[0] for wallet in wallets]
-
+    
     return jsonify({
         "status": "success",
         "wallets": wallet_list,
         "count": len(wallet_list)
     })
 
-
 @app.route('/api/transactions', methods=['GET'])
-def api_get_transactions():
+def api_get_transactions(specific_wallet=None):
     """الحصول على جميع المعاملات مع دعم التصفية والترتيب"""
     if not verify_api_key():
         return jsonify({"error": "غير مصرح به", "code": 401}), 401
-
+    
     # معلمات التصفية الاختيارية
-    wallet = request.args.get('wallet')
+    wallet = specific_wallet or request.args.get('wallet')
     currency = request.args.get('currency')
     transaction_type = request.args.get('type')  # credit/debit
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    limit = request.args.get('limit', default=100, type=int)
     
-    # بما أن request.args هو MultiDict، يمكن تمرير معلمات default و type
-    try:
-        limit = request.args.get('limit', default=100, type=int)
-    except Exception:
-        limit = 100
-
     # بناء الاستعلام الأساسي
     query = Transaction.query
-
+    
     # تطبيق الفلاتر
     if wallet:
         query = query.filter_by(wallet=wallet)
@@ -1133,17 +1126,17 @@ def api_get_transactions():
             query = query.filter(Transaction.timestamp <= end_date_obj)
         except ValueError:
             return jsonify({"error": "تنسيق تاريخ النهاية غير صالح. استخدم YYYY-MM-DD"}), 400
-
+    
     # ترتيب النتائج تنازليًا حسب التاريخ
     query = query.order_by(Transaction.timestamp.desc())
-
+    
     # تطبيق الحد
     if limit:
         query = query.limit(limit)
-
+    
     # تنفيذ الاستعلام
     transactions = query.all()
-
+    
     # تحويل النتائج إلى JSON
     result = []
     for transaction in transactions:
@@ -1160,50 +1153,42 @@ def api_get_transactions():
             'timestamp': transaction.timestamp.isoformat() if transaction.timestamp else None,
             'is_confirmed': transaction.is_confirmed
         })
-
+    
     return jsonify({
         "status": "success",
         "count": len(result),
         "transactions": result
     })
 
-
 @app.route('/api/wallets/<wallet_name>/transactions', methods=['GET'])
 def api_get_wallet_transactions(wallet_name):
     """الحصول على معاملات محفظة محددة"""
     if not verify_api_key():
         return jsonify({"error": "غير مصرح به", "code": 401}), 401
-
+    
     # التحقق من وجود المحفظة
     wallet_exists = db.session.query(Transaction.wallet).filter_by(wallet=wallet_name).first()
     if not wallet_exists:
         return jsonify({"error": f"المحفظة {wallet_name} غير موجودة", "code": 404}), 404
-
-    # نقل المعلمات إلى نقطة النهاية العامة مع إضافة معلمة المحفظة
-    # إزالة تحويل request.args إلى dict حتى تظل MultiDict وتدعم get() مع default و type.
-    # فقط نقوم بتعديل المعلمة:
-    args = request.args.to_dict()
-    args['wallet'] = wallet_name
-    # يمكنك استدعاء دالة api_get_transactions مباشرةً باستخدام المعلمات المعدلة:
-    with app.test_request_context(query_string=args):
-        return api_get_transactions()
-
+    
+    # استخدام معلمات الطلب الحالية مع تمرير معلمة المحفظة عبر دالة api_get_transactions
+    return api_get_transactions(wallet_name)
 
 @app.route('/api/wallets/<wallet_name>/summary', methods=['GET'])
 def api_get_wallet_summary(wallet_name):
     """الحصول على ملخص محفظة محددة"""
     if not verify_api_key():
         return jsonify({"error": "غير مصرح به", "code": 401}), 401
-
+    
     # التحقق من وجود المحفظة
     wallet_exists = db.session.query(Transaction.wallet).filter_by(wallet=wallet_name).first()
     if not wallet_exists:
         return jsonify({"error": f"المحفظة {wallet_name} غير موجودة", "code": 404}), 404
-
+    
     # الحصول على العملات المختلفة للمحفظة
     currencies = db.session.query(Transaction.currency).filter_by(wallet=wallet_name).distinct().all()
     currencies = [currency[0] for currency in currencies]
-
+    
     # تجميع المعلومات لكل عملة
     summary = {}
     for currency in currencies:
@@ -1211,25 +1196,25 @@ def api_get_wallet_summary(wallet_name):
         credit_sum = db.session.query(db.func.sum(Transaction.amount)).filter_by(
             wallet=wallet_name, currency=currency, type='credit'
         ).scalar() or 0
-
+        
         # إجمالي السحوبات
         debit_sum = db.session.query(db.func.sum(Transaction.amount)).filter_by(
             wallet=wallet_name, currency=currency, type='debit'
         ).scalar() or 0
-
+        
         # آخر رصيد
         latest_transaction = Transaction.query.filter_by(
             wallet=wallet_name, currency=currency
         ).order_by(Transaction.timestamp.desc()).first()
-
+        
         latest_balance = latest_transaction.balance if latest_transaction else 0
         latest_date = latest_transaction.timestamp.isoformat() if latest_transaction and latest_transaction.timestamp else None
-
+        
         # عدد المعاملات
         transaction_count = Transaction.query.filter_by(
             wallet=wallet_name, currency=currency
         ).count()
-
+        
         summary[currency] = {
             'credits': float(credit_sum),
             'debits': float(debit_sum),
@@ -1238,16 +1223,30 @@ def api_get_wallet_summary(wallet_name):
             'latest_transaction_date': latest_date,
             'transaction_count': transaction_count
         }
-
+    
     return jsonify({
         "status": "success",
         "wallet": wallet_name,
         "summary": summary
     })
 
+@app.route('/api/docs', methods=['GET'])
+@login_required
+def api_docs():
+    """توثيق واجهة برمجة التطبيقات"""
+    now = datetime.now()  # إضافة متغير التاريخ الحالي
+    return render_template('api_docs.html', now=now)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# تحميل المستخدم لـ Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# مصادقة مفتاح API
+def verify_api_key():
+    """التحقق من صحة مفتاح API في رأس الطلب."""
+    api_key = request.headers.get('X-API-Key')
+    return api_key == app.config['API_KEY']
 
 # وظيفة مساعدة للتحقق من صلاحيات المشرف
 def admin_required(f):
