@@ -424,6 +424,33 @@
 
 {% endblock %}
 
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // تحديد جميع أزرار تحديث الحالة
+        const updateButtons = document.querySelectorAll('[data-bs-toggle="modal"][data-bs-target^="#updateStatusModal"]');
+        
+        // إضافة مستمع حدث لكل زر
+        updateButtons.forEach(button => {
+            button.addEventListener('click', function(event) {
+                // منع السلوك الافتراضي للزر
+                event.preventDefault();
+                
+                // الحصول على معرف المودال من خاصية data-bs-target
+                const modalId = this.getAttribute('data-bs-target');
+                
+                // تحديد عنصر المودال
+                const modal = document.querySelector(modalId);
+                
+                // إنشاء كائن مودال Bootstrap وفتحه
+                const bootstrapModal = new bootstrap.Modal(modal);
+                bootstrapModal.show();
+            });
+        });
+    });
+</script>
+{% endblock %}
+
 {% block modals %}
 <!-- مودالات تحديث الحالة: تم نقلها خارج الجدول -->
 {% for transaction in transactions %}
@@ -448,13 +475,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="executed_by{{ transaction.id }}" class="form-label">المشرف</label>
-                        <select class="form-select" id="executed_by{{ transaction.id }}" name="executed_by">
-                            <option value="">-- اختر المشرف --</option>
-                            <option value="النظام التلقائي" {% if transaction.executed_by == 'النظام التلقائي' %}selected{% endif %}>النظام التلقائي</option>
-                            {% for admin in ['المشرف 1', 'المشرف 2', 'المشرف 3'] %}
-                            <option value="{{ admin }}" {% if transaction.executed_by == admin %}selected{% endif %}>{{ admin }}</option>
-                            {% endfor %}
-                        </select>
+                        <input type="text" class="form-control" id="executed_by{{ transaction.id }}" name="executed_by" value="{{ transaction.executed_by or current_user.username }}" required>
                     </div>
                 </div>
                 <div class="modal-footer">
