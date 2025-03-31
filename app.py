@@ -1288,6 +1288,90 @@ def api_get_transactions_alt_route(wallet_name):
     """مسار بديل للحصول على معاملات محفظة محددة (للتوافق مع التطبيقات الخارجية)"""
     return api_get_wallet_transactions(wallet_name)
 
+# إضافة API لتحديث حالة المعاملة
+@app.route('/api/update_transaction', methods=['POST'])
+def api_update_transaction():
+    """تحديث حالة المعاملة وبيانات المشرف من المشروع الأول"""
+    try:
+        # التحقق من مفتاح API
+        if not verify_api_key():
+            return jsonify({
+                'success': False,
+                'error': 'مفتاح API غير صالح'
+            }), 401
+        
+        # الحصول على البيانات من الطلب
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'لم يتم توفير بيانات في الطلب'
+            }), 400
+        
+        # التحقق من وجود البيانات المطلوبة
+        required_fields = ['transaction_id', 'wallet', 'status']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'error': f'البيانات غير مكتملة: {", ".join(missing_fields)}'
+            }), 400
+        
+        # البحث عن المعاملة باستخدام معرف المعاملة والمحفظة
+        transaction_id = data.get('transaction_id')
+        wallet = data.get('wallet')
+        
+        # محاولة العثور على المعاملة باستخدام معرف المعاملة
+        transaction = Transaction.query.filter_by(transaction_id=transaction_id, wallet=wallet).first()
+        
+        # إذا لم يتم العثور على المعاملة، نبحث باستخدام المعرف الرقمي
+        if not transaction and transaction_id.isdigit():
+            transaction = Transaction.query.filter_by(id=int(transaction_id), wallet=wallet).first()
+        
+        # إذا لم يتم العثور على المعاملة، نبحث باستخدام counterparty
+        if not transaction and 'counterparty' in data:
+            counterparty = data.get('counterparty')
+            amount = data.get('amount')
+            currency = data.get('currency')
+            
+            # البحث عن المعاملات التي تطابق الطرف المقابل والمبلغ والعملة
+            query = Transaction.query.filter_by(wallet=wallet, counterparty=counterparty)
+            
+            if amount:
+                query = query.filter_by(amount=float(amount))
+            
+            if currency:
+                query = query.filter_by(currency=currency)
+            
+            # الحصول على أحدث معاملة مطابقة
+            transaction = query.order_by(Transaction.timestamp.desc()).first()
+        
+        if not transaction:
+            return jsonify({
+                'success': False,
+                'error': f'لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}'
+            }), 404
+        
+        # تحديث بيانات المعاملة
+        transaction.status = data.get('status')
+        transaction.executed_by = data.get('executed_by', 'النظام التلقائي')
+        
+        # حفظ التغييرات
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'تم تحديث حالة المعاملة {transaction_id} بنجاح',
+            'transaction': transaction.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'حدث خطأ أثناء تحديث المعاملة: {str(e)}'
+        }), 500
+
 # تحميل المستخدم لـ Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
