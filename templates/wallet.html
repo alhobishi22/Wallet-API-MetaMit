@@ -426,28 +426,8 @@
 
 {% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // تحديد جميع أزرار تحديث الحالة
-        const updateButtons = document.querySelectorAll('[data-bs-toggle="modal"][data-bs-target^="#updateStatusModal"]');
-        
-        // إضافة مستمع حدث لكل زر
-        updateButtons.forEach(button => {
-            button.addEventListener('click', function(event) {
-                // منع السلوك الافتراضي للزر
-                event.preventDefault();
-                
-                // الحصول على معرف المودال من خاصية data-bs-target
-                const modalId = this.getAttribute('data-bs-target');
-                
-                // تحديد عنصر المودال
-                const modal = document.querySelector(modalId);
-                
-                // إنشاء كائن مودال Bootstrap وفتحه
-                const bootstrapModal = new bootstrap.Modal(modal);
-                bootstrapModal.show();
-            });
-        });
-    });
+    // لا نحتاج إلى كود JavaScript إضافي لأن Bootstrap 5 يتعامل مع المودال تلقائيًا
+    // عند استخدام السمات data-bs-toggle و data-bs-target
 </script>
 {% endblock %}
 
