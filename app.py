@@ -1111,11 +1111,15 @@ def receive_sms():
 
 # دالة مساعدة للتحقق من مفتاح API
 def verify_api_key():
-    """التحقق من صحة مفتاح API المقدم في طلب API"""
-    api_key = request.headers.get('X-API-Key')
-    if not api_key or api_key != API_KEY:
-        return False
-    return True
+    """التحقق من صحة مفتاح API في رأس الطلب."""
+    api_key = request.headers.get('X-API-KEY')
+    expected_key = API_KEY  # استخدام المتغير العالمي API_KEY المعرف في بداية الملف
+    
+    # تسجيل معلومات التصحيح
+    app.logger.info(f"المفتاح المستلم: {api_key}")
+    app.logger.info(f"المفتاح المتوقع: {expected_key}")
+    
+    return api_key == expected_key
 
 @app.route('/api/wallets', methods=['GET'])
 def api_get_wallets():
@@ -1293,8 +1297,14 @@ def api_get_transactions_alt_route(wallet_name):
 def api_update_transaction():
     """تحديث حالة المعاملة وبيانات المشرف من المشروع الأول"""
     try:
+        # تسجيل استلام الطلب
+        app.logger.info("تم استلام طلب تحديث حالة المعاملة")
+        app.logger.info(f"البيانات المستلمة: {request.data}")
+        app.logger.info(f"الرؤوس: {request.headers}")
+        
         # التحقق من مفتاح API
         if not verify_api_key():
+            app.logger.error("مفتاح API غير صالح")
             return jsonify({
                 'success': False,
                 'error': 'مفتاح API غير صالح'
@@ -1303,6 +1313,7 @@ def api_update_transaction():
         # الحصول على البيانات من الطلب
         data = request.json
         if not data:
+            app.logger.error("لم يتم توفير بيانات في الطلب")
             return jsonify({
                 'success': False,
                 'error': 'لم يتم توفير بيانات في الطلب'
@@ -1312,6 +1323,7 @@ def api_update_transaction():
         required_fields = ['transaction_id', 'wallet', 'status']
         missing_fields = [field for field in required_fields if field not in data]
         if missing_fields:
+            app.logger.error(f"البيانات غير مكتملة: {missing_fields}")
             return jsonify({
                 'success': False,
                 'error': f'البيانات غير مكتملة: {", ".join(missing_fields)}'
@@ -1321,12 +1333,16 @@ def api_update_transaction():
         transaction_id = data.get('transaction_id')
         wallet = data.get('wallet')
         
+        app.logger.info(f"البحث عن المعاملة: ID={transaction_id}, المحفظة={wallet}")
+        
         # محاولة العثور على المعاملة باستخدام معرف المعاملة
         transaction = Transaction.query.filter_by(transaction_id=transaction_id, wallet=wallet).first()
+        app.logger.info(f"نتيجة البحث باستخدام transaction_id: {transaction}")
         
         # إذا لم يتم العثور على المعاملة، نبحث باستخدام المعرف الرقمي
         if not transaction and transaction_id.isdigit():
             transaction = Transaction.query.filter_by(id=int(transaction_id), wallet=wallet).first()
+            app.logger.info(f"نتيجة البحث باستخدام id الرقمي: {transaction}")
         
         # إذا لم يتم العثور على المعاملة، نبحث باستخدام counterparty
         if not transaction and 'counterparty' in data:
@@ -1334,8 +1350,13 @@ def api_update_transaction():
             amount = data.get('amount')
             currency = data.get('currency')
             
+            app.logger.info(f"البحث باستخدام بيانات إضافية: الطرف المقابل={counterparty}, المبلغ={amount}, العملة={currency}")
+            
             # البحث عن المعاملات التي تطابق الطرف المقابل والمبلغ والعملة
-            query = Transaction.query.filter_by(wallet=wallet, counterparty=counterparty)
+            query = Transaction.query.filter_by(wallet=wallet)
+            
+            if counterparty:
+                query = query.filter_by(counterparty=counterparty)
             
             if amount:
                 query = query.filter_by(amount=float(amount))
@@ -1345,8 +1366,10 @@ def api_update_transaction():
             
             # الحصول على أحدث معاملة مطابقة
             transaction = query.order_by(Transaction.timestamp.desc()).first()
+            app.logger.info(f"نتيجة البحث باستخدام البيانات الإضافية: {transaction}")
         
         if not transaction:
+            app.logger.error(f"لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}")
             return jsonify({
                 'success': False,
                 'error': f'لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}'
@@ -1356,8 +1379,11 @@ def api_update_transaction():
         transaction.status = data.get('status')
         transaction.executed_by = data.get('executed_by', 'النظام التلقائي')
         
+        app.logger.info(f"تحديث المعاملة: الحالة={transaction.status}, المنفذ={transaction.executed_by}")
+        
         # حفظ التغييرات
         db.session.commit()
+        app.logger.info("تم حفظ التغييرات بنجاح")
         
         return jsonify({
             'success': True,
@@ -1367,6 +1393,7 @@ def api_update_transaction():
         
     except Exception as e:
         db.session.rollback()
+        app.logger.error(f"حدث خطأ أثناء تحديث المعاملة: {str(e)}")
         return jsonify({
             'success': False,
             'error': f'حدث خطأ أثناء تحديث المعاملة: {str(e)}'
@@ -1377,18 +1404,12 @@ def api_update_transaction():
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# مصادقة مفتاح API
-def verify_api_key():
-    """التحقق من صحة مفتاح API في رأس الطلب."""
-    api_key = request.headers.get('X-API-Key')
-    return api_key == app.config['API_KEY']
-
 # وظيفة مساعدة للتحقق من صلاحيات المشرف
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.is_admin:
-            flash('عذراً، لا تملك الصلاحيات للوصول إلى هذه الصفحة.', 'danger')
+            flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'danger')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
