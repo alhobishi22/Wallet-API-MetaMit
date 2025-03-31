@@ -46,6 +46,8 @@ class Transaction(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.now)
     created_at = db.Column(db.DateTime, default=datetime.now)
     is_confirmed_db = db.Column(db.Boolean, default=False)  # Nueva columna para almacenar el estado de confirmación
+    status = db.Column(db.String(20), default='pending')  # حالة الطلب: pending, completed, rejected, cancelled, failed
+    executed_by = db.Column(db.String(100), nullable=True)  # المشرف الذي نفذ العملية
     
     # خصائص افتراضية للأعمدة الجديدة
     @property
@@ -76,7 +78,9 @@ class Transaction(db.Model):
             'raw_message': self.raw_message,
             'timestamp': self.timestamp.isoformat() if self.timestamp else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'is_confirmed': self.is_confirmed
+            'is_confirmed': self.is_confirmed,
+            'status': self.status,
+            'executed_by': self.executed_by
         }
     
     @classmethod
@@ -91,7 +95,9 @@ class Transaction(db.Model):
             counterparty=data.get('counterparty'),
             balance=data.get('balance'),
             balance_currency=data.get('balance_currency'),
-            raw_message=data.get('raw_message')
+            raw_message=data.get('raw_message'),
+            status=data.get('status', 'pending'),
+            executed_by=data.get('executed_by')
         )
         
         # Handle timestamp if provided
