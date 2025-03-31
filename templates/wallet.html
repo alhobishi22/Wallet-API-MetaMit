@@ -345,45 +345,7 @@
                                         <i class="fas fa-edit"></i> تحديث الحالة
                                     </button>
                                     
-                                    <!-- Modal for updating status -->
-                                    <div class="modal fade" id="updateStatusModal{{ transaction.id }}" tabindex="-1" aria-labelledby="updateStatusModalLabel{{ transaction.id }}" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title" id="updateStatusModalLabel{{ transaction.id }}">تحديث حالة الطلب</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <form action="{{ url_for('update_transaction_status', transaction_id=transaction.id) }}" method="post">
-                                                    <div class="modal-body">
-                                                        <div class="mb-3">
-                                                            <label for="status{{ transaction.id }}" class="form-label">حالة الطلب</label>
-                                                            <select class="form-select" id="status{{ transaction.id }}" name="status" required>
-                                                                <option value="pending" {% if transaction.status == 'pending' %}selected{% endif %}>قيد الانتظار</option>
-                                                                <option value="completed" {% if transaction.status == 'completed' %}selected{% endif %}>مكتملة</option>
-                                                                <option value="rejected" {% if transaction.status == 'rejected' %}selected{% endif %}>مرفوضة</option>
-                                                                <option value="failed" {% if transaction.status == 'failed' %}selected{% endif %}>فاشلة</option>
-                                                                <option value="cancelled" {% if transaction.status == 'cancelled' %}selected{% endif %}>ملغية</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label for="executed_by{{ transaction.id }}" class="form-label">المشرف</label>
-                                                            <select class="form-select" id="executed_by{{ transaction.id }}" name="executed_by">
-                                                                <option value="">-- اختر المشرف --</option>
-                                                                <option value="النظام التلقائي" {% if transaction.executed_by == 'النظام التلقائي' %}selected{% endif %}>النظام التلقائي</option>
-                                                                {% for admin in ['المشرف 1', 'المشرف 2', 'المشرف 3'] %}
-                                                                    <option value="{{ admin }}" {% if transaction.executed_by == admin %}selected{% endif %}>{{ admin }}</option>
-                                                                {% endfor %}
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                                        <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    
                                 </td>
                             </tr>
                             {% endfor %}
@@ -404,7 +366,45 @@
         </div>
     </div>
 </div>
-
+<!-- Modal for updating status -->
+<div class="modal fade" id="updateStatusModal{{ transaction.id }}" tabindex="-1" aria-labelledby="updateStatusModalLabel{{ transaction.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updateStatusModalLabel{{ transaction.id }}">تحديث حالة الطلب</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('update_transaction_status', transaction_id=transaction.id) }}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="status{{ transaction.id }}" class="form-label">حالة الطلب</label>
+                        <select class="form-select" id="status{{ transaction.id }}" name="status" required>
+                            <option value="pending" {% if transaction.status == 'pending' %}selected{% endif %}>قيد الانتظار</option>
+                            <option value="completed" {% if transaction.status == 'completed' %}selected{% endif %}>مكتملة</option>
+                            <option value="rejected" {% if transaction.status == 'rejected' %}selected{% endif %}>مرفوضة</option>
+                            <option value="failed" {% if transaction.status == 'failed' %}selected{% endif %}>فاشلة</option>
+                            <option value="cancelled" {% if transaction.status == 'cancelled' %}selected{% endif %}>ملغية</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="executed_by{{ transaction.id }}" class="form-label">المشرف</label>
+                        <select class="form-select" id="executed_by{{ transaction.id }}" name="executed_by">
+                            <option value="">-- اختر المشرف --</option>
+                            <option value="النظام التلقائي" {% if transaction.executed_by == 'النظام التلقائي' %}selected{% endif %}>النظام التلقائي</option>
+                            {% for admin in ['المشرف 1', 'المشرف 2', 'المشرف 3'] %}
+                                <option value="{{ admin }}" {% if transaction.executed_by == admin %}selected{% endif %}>{{ admin }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 <!-- Upload Wallet Modal -->
 <div class="modal fade" id="uploadWalletModal" tabindex="-1" aria-labelledby="uploadWalletModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
