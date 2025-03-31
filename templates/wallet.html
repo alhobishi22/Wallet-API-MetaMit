@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<!-- رأس المحفظة -->
 <div class="wallet-header mb-4">
     {% if wallet_name == "KuraimiIMB" %}
     <div class="card" style="background: linear-gradient(90deg, #6610f2, #8b30dd); color: white;">
@@ -12,8 +13,12 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h3 class="mb-1" style="color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">محفظة {{ wallet_name }}</h3>
-                    <p class="mb-0" style="color: rgba(255,255,255,0.8);">عرض تفاصيل وإحصائيات المحفظة</p>
+                    <h3 class="mb-1" style="color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
+                        محفظة {{ wallet_name }}
+                    </h3>
+                    <p class="mb-0" style="color: rgba(255,255,255,0.8);">
+                        عرض تفاصيل وإحصائيات المحفظة
+                    </p>
                 </div>
                 <div class="wallet-actions">
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadWalletModal">
@@ -28,7 +33,7 @@
     </div>
 </div>
 
-<!-- Currency Summary Cards -->
+<!-- بطاقات ملخص العملات -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
@@ -37,11 +42,13 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <!-- YER Currency Card -->
+                    <!-- بطاقة ريال يمني -->
                     <div class="col-md-4 mb-3">
                         <div class="card h-100">
                             <div class="card-header text-center currency-yer">
-                                <h5 class="mb-0" style="color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">ريال يمني (YER)</h5>
+                                <h5 class="mb-0" style="color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">
+                                    ريال يمني (YER)
+                                </h5>
                             </div>
                             <div class="card-body">
                                 <ul class="list-group list-group-flush">
@@ -79,12 +86,13 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- SAR Currency Card -->
+                    <!-- بطاقة ريال سعودي -->
                     <div class="col-md-4 mb-3">
                         <div class="card h-100">
                             <div class="card-header text-center currency-sar">
-                                <h5 class="mb-0" style="color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">ريال سعودي (SAR)</h5>
+                                <h5 class="mb-0" style="color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">
+                                    ريال سعودي (SAR)
+                                </h5>
                             </div>
                             <div class="card-body">
                                 <ul class="list-group list-group-flush">
@@ -122,12 +130,13 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- USD Currency Card -->
+                    <!-- بطاقة دولار أمريكي -->
                     <div class="col-md-4 mb-3">
                         <div class="card h-100">
                             <div class="card-header text-center currency-usd">
-                                <h5 class="mb-0" style="color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">دولار أمريكي (USD)</h5>
+                                <h5 class="mb-0" style="color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">
+                                    دولار أمريكي (USD)
+                                </h5>
                             </div>
                             <div class="card-body">
                                 <ul class="list-group list-group-flush">
@@ -171,7 +180,7 @@
     </div>
 </div>
 
-<!-- Charts Section -->
+<!-- قسم الرسوم البيانية -->
 {% if charts %}
 <div class="row mb-4">
     {% if charts.transaction_types %}
@@ -221,7 +230,7 @@
 </div>
 {% endif %}
 
-<!-- Transactions Table -->
+<!-- جدول المعاملات -->
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -253,7 +262,9 @@
                             {% for transaction in transactions %}
                             <tr>
                                 <td>
-                                    <span class="badge bg-secondary">{{ transaction.transaction_id if transaction.transaction_id else 'غير متوفر' }}</span>
+                                    <span class="badge bg-secondary">
+                                        {{ transaction.transaction_id if transaction.transaction_id else 'غير متوفر' }}
+                                    </span>
                                 </td>
                                 <td>
                                     <span class="{{ 'transaction-credit' if transaction.type == 'credit' else 'transaction-debit' }}">
@@ -266,25 +277,23 @@
                                 <td>{{ transaction.counterparty if transaction.counterparty else '-' }}</td>
                                 <td>{{ transaction.balance|round(2) if transaction.balance else '-' }}</td>
                                 <td>
-                                {% if transaction.timestamp %}
-                                    {# تحويل الوقت إلى نظام 12 ساعة #}
-                                    {% set hour = transaction.timestamp.strftime('%H')|int %}
-                                    {% set minutes = transaction.timestamp.strftime('%M') %}
-                                    {% set seconds = transaction.timestamp.strftime('%S') %}
-                                    {% set date = transaction.timestamp.strftime('%Y-%m-%d') %}
-                                    
-                                    {% if hour > 12 %}
-                                        {{ '%02d' % (hour - 12) }}:{{ minutes }}:{{ seconds }} م {{ date }}
-                                    {% elif hour == 12 %}
-                                        {{ '%02d' % hour }}:{{ minutes }}:{{ seconds }} م {{ date }}
-                                    {% elif hour == 0 %}
-                                        12:{{ minutes }}:{{ seconds }} ص {{ date }}
+                                    {% if transaction.timestamp %}
+                                        {% set hour = transaction.timestamp.strftime('%H')|int %}
+                                        {% set minutes = transaction.timestamp.strftime('%M') %}
+                                        {% set seconds = transaction.timestamp.strftime('%S') %}
+                                        {% set date = transaction.timestamp.strftime('%Y-%m-%d') %}
+                                        {% if hour > 12 %}
+                                            {{ '%02d' % (hour - 12) }}:{{ minutes }}:{{ seconds }} م {{ date }}
+                                        {% elif hour == 12 %}
+                                            {{ '%02d' % hour }}:{{ minutes }}:{{ seconds }} م {{ date }}
+                                        {% elif hour == 0 %}
+                                            12:{{ minutes }}:{{ seconds }} ص {{ date }}
+                                        {% else %}
+                                            {{ '%02d' % hour }}:{{ minutes }}:{{ seconds }} ص {{ date }}
+                                        {% endif %}
                                     {% else %}
-                                        {{ '%02d' % hour }}:{{ minutes }}:{{ seconds }} ص {{ date }}
+                                        -
                                     {% endif %}
-                                {% else %}
-                                    -
-                                {% endif %}
                                 </td>
                                 <td>
                                     {% if transaction.is_confirmed %}
@@ -344,8 +353,6 @@
                                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal{{ transaction.id }}">
                                         <i class="fas fa-edit"></i> تحديث الحالة
                                     </button>
-                                    
-                                    
                                 </td>
                             </tr>
                             {% endfor %}
@@ -366,7 +373,60 @@
         </div>
     </div>
 </div>
-<!-- Modal for updating status -->
+
+<!-- مودال رفع الرسائل -->
+<div class="modal fade" id="uploadWalletModal" tabindex="-1" aria-labelledby="uploadWalletModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadWalletModalLabel">رفع رسائل محفظة {{ wallet_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('upload_wallet', wallet_name=wallet_name) }}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="sms_text" class="form-label">نص الرسائل</label>
+                        <textarea class="form-control" id="sms_text" name="sms_text" rows="10" placeholder="الصق رسائل المحفظة هنا..." required></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> قم بنسخ ولصق رسائل محفظة {{ wallet_name }}.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">تحليل الرسائل</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- مودال مسح بيانات المحفظة -->
+<div class="modal fade" id="clearWalletDataModal" tabindex="-1" aria-labelledby="clearWalletDataModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clearWalletDataModalLabel">مسح بيانات محفظة {{ wallet_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>هل أنت متأكد من رغبتك في مسح بيانات معاملات محفظة {{ wallet_name }}؟</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <form action="{{ url_for('clear_wallet_data', wallet_name=wallet_name) }}" method="post" style="display:inline;">
+                    <button type="submit" class="btn btn-danger">مسح البيانات</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- مودالات تحديث الحالة: تم نقلها خارج الجدول -->
+{% for transaction in transactions %}
 <div class="modal fade" id="updateStatusModal{{ transaction.id }}" tabindex="-1" aria-labelledby="updateStatusModalLabel{{ transaction.id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -392,7 +452,7 @@
                             <option value="">-- اختر المشرف --</option>
                             <option value="النظام التلقائي" {% if transaction.executed_by == 'النظام التلقائي' %}selected{% endif %}>النظام التلقائي</option>
                             {% for admin in ['المشرف 1', 'المشرف 2', 'المشرف 3'] %}
-                                <option value="{{ admin }}" {% if transaction.executed_by == admin %}selected{% endif %}>{{ admin }}</option>
+                            <option value="{{ admin }}" {% if transaction.executed_by == admin %}selected{% endif %}>{{ admin }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -405,60 +465,5 @@
         </div>
     </div>
 </div>
-<!-- Upload Wallet Modal -->
-<div class="modal fade" id="uploadWalletModal" tabindex="-1" aria-labelledby="uploadWalletModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="uploadWalletModalLabel">رفع رسائل محفظة {{ wallet_name }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="{{ url_for('upload_wallet', wallet_name=wallet_name) }}" method="post">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="sms_text" class="form-label">نص الرسائل</label>
-                        <textarea class="form-control" id="sms_text" name="sms_text" rows="10" placeholder="الصق رسائل المحفظة هنا..." required></textarea>
-                    </div>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> قم بنسخ ولصق رسائل محفظة {{ wallet_name }}http://localhost:5000/login .
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-primary">تحليل الرسائل</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Clear Wallet Data Modal -->
-<div class="modal fade" id="clearWalletDataModal" tabindex="-1" aria-labelledby="clearWalletDataModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="clearWalletDataModalLabel">مسح بيانات محفظة {{ wallet_name }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>هل أنت متأكد من رغبتك في مسح جميع بيانات معاملات محفظة {{ wallet_name }}؟ لا يمكن التراجع عن هذا الإجراء.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <form action="{{ url_for('clear_wallet_data', wallet_name=wallet_name) }}" method="post">
-                    <button type="submit" class="btn btn-danger">مسح البيانات</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add any JavaScript functionality here
-        console.log('Wallet page loaded successfully');
-    });
-</script>
+{% endfor %}
 {% endblock %}
