@@ -916,6 +916,36 @@ def delete_transaction(transaction_id):
     # إعادة التوجيه إلى صفحة المحفظة
     return redirect(url_for('wallet', wallet_name=wallet_name))
 
+@app.route('/update-transaction-status/<int:transaction_id>', methods=['POST'])
+@login_required
+def update_transaction_status(transaction_id):
+    """تحديث حالة الطلب والمشرف الذي نفذ العملية"""
+    try:
+        # البحث عن المعاملة بواسطة المعرف
+        transaction = Transaction.query.get_or_404(transaction_id)
+        
+        # الحصول على البيانات من النموذج
+        status = request.form.get('status')
+        executed_by = request.form.get('executed_by')
+        
+        # التحقق من صحة البيانات
+        if status not in ['pending', 'completed', 'rejected', 'failed', 'cancelled']:
+            flash('حالة الطلب غير صالحة', 'danger')
+            return redirect(url_for('wallet', wallet_name=transaction.wallet))
+        
+        # تحديث البيانات
+        transaction.status = status
+        transaction.executed_by = executed_by
+        
+        db.session.commit()
+        flash('تم تحديث حالة الطلب بنجاح', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'حدث خطأ أثناء تحديث حالة الطلب: {str(e)}', 'danger')
+        
+    # إعادة التوجيه إلى صفحة المحفظة
+    return redirect(url_for('wallet', wallet_name=transaction.wallet))
+
 @app.route('/export', methods=['GET'])
 def export_data():
     """Export transaction data as JSON."""
