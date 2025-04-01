@@ -426,13 +426,64 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
 {% block extra_js %}
-    <!-- تضمين JS الخاص بـ Bootstrap -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // لا حاجة لكود إضافي، فـ Bootstrap 5 يتعامل تلقائيًا مع المودالات عبر السمات data-bs-toggle و data-bs-target
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('تهيئة أزرار تحديث الحالة...');
+            
+            // طباعة جميع المودالات الموجودة في الصفحة للتشخيص
+            var allModals = document.querySelectorAll('.modal');
+            console.log('عدد المودالات الموجودة في الصفحة: ' + allModals.length);
+            allModals.forEach(function(modal) {
+                console.log('مودال موجود: #' + modal.id);
+            });
+            
+            // تهيئة المودالات يدوياً
+            var updateButtons = document.querySelectorAll('[data-bs-toggle="modal"][data-bs-target^="#updateStatusModal"]');
+            console.log('عدد أزرار تحديث الحالة: ' + updateButtons.length);
+            
+            updateButtons.forEach(function(button) {
+                console.log('زر تحديث الحالة يشير إلى: ' + button.getAttribute('data-bs-target'));
+                
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation(); // منع انتشار الحدث
+                    
+                    var modalId = this.getAttribute('data-bs-target');
+                    console.log('تم النقر على زر المودال: ' + modalId);
+                    
+                    // استخدام طريقة بديلة للعثور على المودال
+                    var modalElement = document.getElementById(modalId.replace('#', ''));
+                    
+                    if (modalElement) {
+                        console.log('تم العثور على المودال: ' + modalId);
+                        try {
+                            var modal = new bootstrap.Modal(modalElement);
+                            modal.show();
+                        } catch (error) {
+                            console.error('خطأ في فتح المودال: ', error);
+                            // طريقة بديلة لفتح المودال
+                            modalElement.classList.add('show');
+                            modalElement.style.display = 'block';
+                            document.body.classList.add('modal-open');
+                            var backdrop = document.createElement('div');
+                            backdrop.className = 'modal-backdrop fade show';
+                            document.body.appendChild(backdrop);
+                        }
+                    } else {
+                        console.error('لم يتم العثور على المودال: ' + modalId);
+                        
+                        // طباعة جميع معرفات المودالات للتشخيص
+                        var modalIds = [];
+                        document.querySelectorAll('.modal').forEach(function(m) {
+                            modalIds.push('#' + m.id);
+                        });
+                        console.log('المودالات المتاحة: ' + modalIds.join(', '));
+                    }
+                });
+            });
+        });
     </script>
 {% endblock %}
 
@@ -473,3 +524,5 @@
     </div>
     {% endfor %}
 {% endblock %}
+
+{% endblock content %}
