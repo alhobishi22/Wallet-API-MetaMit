@@ -432,9 +432,39 @@
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Custom JS -->
+    <!-- تضمين مكتبة Bootstrap JavaScript من CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    
+    <!-- تأكد من تهيئة المودالات بشكل صحيح -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // استخدام طريقة أكثر أماناً لتهيئة المودالات
+            var modalButtons = document.querySelectorAll('[data-bs-toggle="modal"]');
+            if (modalButtons.length > 0) {
+                console.log('تم العثور على ' + modalButtons.length + ' زر مودال');
+                modalButtons.forEach(function(button) {
+                    button.addEventListener('click', function(e) {
+                        // الحصول على معرف المودال من السمة data-bs-target
+                        var targetModalId = this.getAttribute('data-bs-target');
+                        console.log('تم النقر على زر المودال: ' + targetModalId);
+                        
+                        // التحقق من وجود المودال
+                        var targetModal = document.querySelector(targetModalId);
+                        if (targetModal) {
+                            // استخدام واجهة برمجة التطبيقات المباشرة من Bootstrap
+                            var modal = new bootstrap.Modal(targetModal);
+                            modal.show();
+                        } else {
+                            console.error('لم يتم العثور على المودال: ' + targetModalId);
+                        }
+                    });
+                });
+            } else {
+                console.log('لم يتم العثور على أي زر مودال');
+            }
+        });
+    </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>
