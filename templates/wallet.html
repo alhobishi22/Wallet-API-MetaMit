@@ -1,5 +1,10 @@
 {% extends 'base.html' %}
 
+{% block head %}
+    <!-- تضمين CSS الخاص بـ Bootstrap (في حال لم يُضمّن مسبقًا في base.html) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
 <!-- رأس المحفظة -->
 <div class="wallet-header mb-4">
@@ -421,50 +426,50 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    // لا نحتاج إلى كود JavaScript إضافي لأن Bootstrap 5 يتعامل مع المودال تلقائيًا
-    // عند استخدام السمات data-bs-toggle و data-bs-target
-</script>
+    <!-- تضمين JS الخاص بـ Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // لا حاجة لكود إضافي، فـ Bootstrap 5 يتعامل تلقائيًا مع المودالات عبر السمات data-bs-toggle و data-bs-target
+    </script>
 {% endblock %}
 
 {% block modals %}
-<!-- مودالات تحديث الحالة: تم نقلها خارج الجدول -->
-{% for transaction in transactions %}
-<div class="modal fade" id="updateStatusModal{{ transaction.id }}" tabindex="-1" aria-labelledby="updateStatusModalLabel{{ transaction.id }}" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="updateStatusModalLabel{{ transaction.id }}">تحديث حالة الطلب</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <!-- مودالات تحديث الحالة: توضع في نهاية الصفحة لضمان تحميلها بعد باقي المحتوى -->
+    {% for transaction in transactions %}
+    <div class="modal fade" id="updateStatusModal{{ transaction.id }}" tabindex="-1" aria-labelledby="updateStatusModalLabel{{ transaction.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateStatusModalLabel{{ transaction.id }}">تحديث حالة الطلب</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('update_transaction_status', transaction_id=transaction.id) }}" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="status{{ transaction.id }}" class="form-label">حالة الطلب</label>
+                            <select class="form-select" id="status{{ transaction.id }}" name="status" required>
+                                <option value="pending" {% if transaction.status == 'pending' %}selected{% endif %}>قيد الانتظار</option>
+                                <option value="completed" {% if transaction.status == 'completed' %}selected{% endif %}>مكتملة</option>
+                                <option value="rejected" {% if transaction.status == 'rejected' %}selected{% endif %}>مرفوضة</option>
+                                <option value="failed" {% if transaction.status == 'failed' %}selected{% endif %}>فاشلة</option>
+                                <option value="cancelled" {% if transaction.status == 'cancelled' %}selected{% endif %}>ملغية</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="executed_by{{ transaction.id }}" class="form-label">المشرف</label>
+                            <input type="text" class="form-control" id="executed_by{{ transaction.id }}" name="executed_by" value="{{ transaction.executed_by or current_user.username }}" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                    </div>
+                </form>
             </div>
-            <form action="{{ url_for('update_transaction_status', transaction_id=transaction.id) }}" method="post">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="status{{ transaction.id }}" class="form-label">حالة الطلب</label>
-                        <select class="form-select" id="status{{ transaction.id }}" name="status" required>
-                            <option value="pending" {% if transaction.status == 'pending' %}selected{% endif %}>قيد الانتظار</option>
-                            <option value="completed" {% if transaction.status == 'completed' %}selected{% endif %}>مكتملة</option>
-                            <option value="rejected" {% if transaction.status == 'rejected' %}selected{% endif %}>مرفوضة</option>
-                            <option value="failed" {% if transaction.status == 'failed' %}selected{% endif %}>فاشلة</option>
-                            <option value="cancelled" {% if transaction.status == 'cancelled' %}selected{% endif %}>ملغية</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="executed_by{{ transaction.id }}" class="form-label">المشرف</label>
-                        <input type="text" class="form-control" id="executed_by{{ transaction.id }}" name="executed_by" value="{{ transaction.executed_by or current_user.username }}" required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
-                </div>
-            </form>
         </div>
     </div>
-</div>
-{% endfor %}
+    {% endfor %}
 {% endblock %}
