@@ -49,6 +49,9 @@ class Transaction(db.Model):
     status = db.Column(db.String(20), default='pending')  # حالة الطلب: pending, completed, rejected, cancelled, failed
     executed_by = db.Column(db.String(100), nullable=True)  # المشرف الذي نفذ العملية
     
+    # قائمة القيم المسموح بها للحالة
+    VALID_STATUSES = ['pending', 'completed', 'rejected', 'cancelled', 'failed']
+    
     # خصائص افتراضية للأعمدة الجديدة
     @property
     def transaction_id(self):
@@ -61,6 +64,16 @@ class Transaction(db.Model):
         """Check if transaction is confirmed."""
         # استخدم القيمة المخزنة في قاعدة البيانات
         return self.is_confirmed_db
+    
+    @property
+    def confirmation_status(self):
+        """Return standardized confirmation status string."""
+        return "confirmed" if self.is_confirmed_db else "unconfirmed"
+    
+    @property
+    def state(self):
+        """Return standardized state value for compatibility."""
+        return self.status
     
     def to_dict(self):
         """Convert transaction to dictionary."""
@@ -79,13 +92,20 @@ class Transaction(db.Model):
             'timestamp': self.timestamp.isoformat() if self.timestamp else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'is_confirmed': self.is_confirmed,
+            'confirmation_status': self.confirmation_status,
             'status': self.status,
-            'executed_by': self.executed_by
+            'state': self.status,  # For compatibility
+            'executed_by': self.executed_by if self.executed_by else None
         }
     
     @classmethod
     def from_dict(cls, data):
         """Create transaction from dictionary."""
+        # Standardize status value
+        status = data.get('status', 'pending')
+        if status not in cls.VALID_STATUSES:
+            status = 'pending'
+            
         transaction = cls(
             wallet=data.get('wallet'),
             type=data.get('type'),
@@ -96,7 +116,7 @@ class Transaction(db.Model):
             balance=data.get('balance'),
             balance_currency=data.get('balance_currency'),
             raw_message=data.get('raw_message'),
-            status=data.get('status', 'pending'),
+            status=status,
             executed_by=data.get('executed_by')
         )
         
@@ -116,5 +136,10 @@ class Transaction(db.Model):
         is_confirmed = data.get('is_confirmed')
         if is_confirmed is not None:
             transaction.is_confirmed_db = is_confirmed
+        
+        # Also check confirmation_status if provided
+        confirmation_status = data.get('confirmation_status')
+        if confirmation_status is not None:
+            transaction.is_confirmed_db = confirmation_status.lower() == 'confirmed'
         
         return transaction
