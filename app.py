@@ -927,15 +927,21 @@ def update_transaction_status(transaction_id):
         # الحصول على البيانات من النموذج
         status = request.form.get('status')
         executed_by = request.form.get('executed_by')
+        is_confirmed = request.form.get('is_confirmed') == 'true'
         
         # التحقق من صحة البيانات
-        if status not in ['pending', 'completed', 'rejected', 'failed', 'cancelled']:
+        if status not in Transaction.VALID_STATUSES:
             flash('حالة الطلب غير صالحة', 'danger')
             return redirect(url_for('wallet', wallet_name=transaction.wallet))
         
         # تحديث البيانات
         transaction.status = status
         transaction.executed_by = executed_by
+        
+        # تحديث حالة التأكيد إذا تم تغييرها
+        if is_confirmed != transaction.is_confirmed_db:
+            transaction.is_confirmed_db = is_confirmed
+            app.logger.info(f"تم تحديث حالة التأكيد للمعاملة {transaction_id} إلى {is_confirmed}")
         
         db.session.commit()
         flash('تم تحديث حالة الطلب بنجاح', 'success')
@@ -1189,19 +1195,9 @@ def api_get_transactions(specific_wallet=None):
     # تحويل النتائج إلى JSON
     result = []
     for transaction in transactions:
-        result.append({
-            'id': transaction.id,
-            'transaction_id': transaction.transaction_id,
-            'wallet': transaction.wallet,
-            'type': transaction.type,
-            'amount': float(transaction.amount) if transaction.amount is not None else 0.0,
-            'currency': transaction.currency,
-            'details': transaction.details,
-            'counterparty': transaction.counterparty,
-            'balance': float(transaction.balance) if transaction.balance is not None else 0.0,
-            'timestamp': transaction.timestamp.isoformat() if transaction.timestamp else None,
-            'is_confirmed': transaction.is_confirmed
-        })
+        # استخدام الدالة to_dict للحصول على تمثيل موحد للمعاملة
+        transaction_dict = transaction.to_dict()
+        result.append(transaction_dict)
     
     return jsonify({
         "status": "success",
@@ -1222,6 +1218,306 @@ def api_get_wallet_transactions(wallet_name):
     
     # استخدام معلمات الطلب الحالية مع تمرير معلمة المحفظة عبر دالة api_get_transactions
     return api_get_transactions(wallet_name)
+
+@app.route('/api/transaction/<transaction_id>', methods=['GET'])
+def api_get_transaction(transaction_id):
+    """الحصول على معاملة محددة بواسطة معرفها"""
+    if not verify_api_key():
+        return jsonify({"error": "غير مصرح به", "code": 401}), 401
+    
+    # البحث عن المعاملة باستخدام المعرف
+    transaction = None
+    
+    # محاولة البحث باستخدام معرف المعاملة المخصص (TX...)
+    if transaction_id.startswith('TX'):
+        transaction = Transaction.query.filter_by(transaction_id=transaction_id).first()
+    
+    # إذا لم يتم العثور على المعاملة، نبحث باستخدام المعرف الرقمي
+    if not transaction and transaction_id.isdigit():
+        transaction = Transaction.query.get(int(transaction_id))
+    
+    if not transaction:
+        return jsonify({
+            "success": False,
+            "error": f"المعاملة {transaction_id} غير موجودة", 
+            "code": 404
+        }), 404
+    
+    # استخدام الدالة to_dict للحصول على تمثيل موحد للمعاملة
+    transaction_data = transaction.to_dict()
+    
+    # إضافة معلومات إضافية قد تكون مفيدة للتحقق من المعاملة
+    transaction_data.update({
+        "wallet": transaction.wallet,
+        "amount": float(transaction.amount) if transaction.amount is not None else 0.0,
+        "currency": transaction.currency,
+        "counterparty": transaction.counterparty,
+        "transaction_id": transaction.transaction_id,
+        "id": transaction.id
+    })
+    
+    return jsonify({
+        "success": True,
+        "transaction": transaction_data
+    })
+
+@app.route('/api/update_transaction', methods=['POST'])
+def api_update_transaction():
+    """تحديث حالة المعاملة وبيانات المشرف من المشروع الأول"""
+    try:
+        # تسجيل استلام الطلب
+        app.logger.info("تم استلام طلب تحديث حالة المعاملة")
+        app.logger.info(f"البيانات المستلمة: {request.data}")
+        app.logger.info(f"الرؤوس: {request.headers}")
+        
+        # التحقق من مفتاح API
+        if not verify_api_key():
+            app.logger.error("مفتاح API غير صالح")
+            return jsonify({
+                'success': False,
+                'error': 'مفتاح API غير صالح'
+            }), 401
+        
+        # الحصول على البيانات من الطلب
+        data = request.get_json()
+        if not data:
+            app.logger.error("لم يتم توفير بيانات في الطلب")
+            return jsonify({
+                'success': False,
+                'error': 'لم يتم توفير بيانات في الطلب'
+            }), 400
+        
+        # التحقق من وجود البيانات المطلوبة
+        required_fields = ['transaction_id', 'wallet', 'status']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            app.logger.error(f"البيانات غير مكتملة: {missing_fields}")
+            return jsonify({
+                'success': False,
+                'error': f'البيانات غير مكتملة: {", ".join(missing_fields)}'
+            }), 400
+        
+        # التحقق من صحة قيمة الحالة
+        status = data.get('status')
+        if status not in Transaction.VALID_STATUSES:
+            app.logger.warning(f"قيمة الحالة '{status}' غير صالحة، سيتم استخدام 'pending'")
+            status = 'pending'
+        
+        # البحث عن المعاملة باستخدام معرف المعاملة والمحفظة
+        transaction_id = data.get('transaction_id')
+        wallet = data.get('wallet')
+        
+        app.logger.info(f"البحث عن المعاملة: ID={transaction_id}, المحفظة={wallet}")
+        
+        # محاولة العثور على المعاملة باستخدام معرف المعاملة
+        transaction = Transaction.query.filter_by(transaction_id=transaction_id, wallet=wallet).first()
+        app.logger.info(f"نتيجة البحث باستخدام transaction_id: {transaction}")
+        
+        # إذا لم يتم العثور على المعاملة، نبحث باستخدام المعرف الرقمي
+        if not transaction and transaction_id.isdigit():
+            transaction = Transaction.query.filter_by(id=int(transaction_id), wallet=wallet).first()
+            app.logger.info(f"نتيجة البحث باستخدام id الرقمي: {transaction}")
+        
+        # إذا لم يتم العثور على المعاملة، نبحث باستخدام counterparty
+        if not transaction and 'counterparty' in data:
+            counterparty = data.get('counterparty')
+            amount = data.get('amount')
+            currency = data.get('currency')
+            
+            app.logger.info(f"البحث باستخدام بيانات إضافية: الطرف المقابل={counterparty}, المبلغ={amount}, العملة={currency}")
+            
+            # البحث عن المعاملات التي تطابق الطرف المقابل والمبلغ والعملة
+            query = Transaction.query.filter_by(wallet=wallet)
+            
+            if counterparty:
+                query = query.filter_by(counterparty=counterparty)
+            
+            if amount:
+                query = query.filter_by(amount=float(amount))
+            
+            if currency:
+                query = query.filter_by(currency=currency)
+            
+            # الحصول على أحدث معاملة مطابقة
+            transaction = query.order_by(Transaction.timestamp.desc()).first()
+            app.logger.info(f"نتيجة البحث باستخدام البيانات الإضافية: {transaction}")
+        
+        if not transaction:
+            app.logger.error(f"لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}")
+            return jsonify({
+                'success': False,
+                'error': f'لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}'
+            }), 404
+        
+        # تحديث بيانات المعاملة
+        transaction.status = status
+        
+        # تحديث حالة التأكيد إذا تم توفيرها
+        if 'is_confirmed' in data:
+            transaction.is_confirmed_db = bool(data.get('is_confirmed'))
+        
+        # تحديث المشرف المنفذ
+        executed_by = data.get('executed_by')
+        if executed_by:
+            transaction.executed_by = executed_by
+        else:
+            transaction.executed_by = 'النظام التلقائي'
+        
+        app.logger.info(f"تحديث المعاملة: الحالة={transaction.status}, المنفذ={transaction.executed_by}, التأكيد={transaction.is_confirmed}")
+        
+        # حفظ التغييرات
+        db.session.commit()
+        app.logger.info("تم حفظ التغييرات بنجاح")
+        
+        return jsonify({
+            'success': True,
+            'message': f'تم تحديث حالة المعاملة {transaction_id} بنجاح',
+            'transaction': transaction.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"حدث خطأ أثناء تحديث المعاملة: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'حدث خطأ أثناء تحديث المعاملة: {str(e)}'
+        }), 500
+
+@app.route('/api/docs', methods=['GET'])
+@login_required
+def api_docs():
+    """توثيق واجهة برمجة التطبيقات"""
+    now = datetime.now()  # إضافة متغير التاريخ الحالي
+    return render_template('api_docs.html', now=now)
+
+# إضافة مسار متوافق مع التطبيق الثاني
+@app.route('/api/transactions/wallet/<wallet_name>', methods=['GET'])
+def api_get_transactions_alt_route(wallet_name):
+    """مسار بديل للحصول على معاملات محفظة محددة (للتوافق مع التطبيقات الخارجية)"""
+    return api_get_wallet_transactions(wallet_name)
+
+# إضافة API لتحديث حالة المعاملة
+@app.route('/api/update_transaction', methods=['POST'])
+def api_update_transaction():
+    """تحديث حالة المعاملة وبيانات المشرف من المشروع الأول"""
+    try:
+        # تسجيل استلام الطلب
+        app.logger.info("تم استلام طلب تحديث حالة المعاملة")
+        app.logger.info(f"البيانات المستلمة: {request.data}")
+        app.logger.info(f"الرؤوس: {request.headers}")
+        
+        # التحقق من مفتاح API
+        if not verify_api_key():
+            app.logger.error("مفتاح API غير صالح")
+            return jsonify({
+                'success': False,
+                'error': 'مفتاح API غير صالح'
+            }), 401
+        
+        # الحصول على البيانات من الطلب
+        data = request.json
+        if not data:
+            app.logger.error("لم يتم توفير بيانات في الطلب")
+            return jsonify({
+                'success': False,
+                'error': 'لم يتم توفير بيانات في الطلب'
+            }), 400
+        
+        # التحقق من وجود البيانات المطلوبة
+        required_fields = ['transaction_id', 'wallet', 'status']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            app.logger.error(f"البيانات غير مكتملة: {missing_fields}")
+            return jsonify({
+                'success': False,
+                'error': f'البيانات غير مكتملة: {", ".join(missing_fields)}'
+            }), 400
+        
+        # التحقق من صحة قيمة الحالة
+        status = data.get('status')
+        if status not in Transaction.VALID_STATUSES:
+            app.logger.warning(f"قيمة الحالة '{status}' غير صالحة، سيتم استخدام 'pending'")
+            status = 'pending'
+        
+        # البحث عن المعاملة باستخدام معرف المعاملة والمحفظة
+        transaction_id = data.get('transaction_id')
+        wallet = data.get('wallet')
+        
+        app.logger.info(f"البحث عن المعاملة: ID={transaction_id}, المحفظة={wallet}")
+        
+        # محاولة العثور على المعاملة باستخدام معرف المعاملة
+        transaction = Transaction.query.filter_by(transaction_id=transaction_id, wallet=wallet).first()
+        app.logger.info(f"نتيجة البحث باستخدام transaction_id: {transaction}")
+        
+        # إذا لم يتم العثور على المعاملة، نبحث باستخدام المعرف الرقمي
+        if not transaction and transaction_id.isdigit():
+            transaction = Transaction.query.filter_by(id=int(transaction_id), wallet=wallet).first()
+            app.logger.info(f"نتيجة البحث باستخدام id الرقمي: {transaction}")
+        
+        # إذا لم يتم العثور على المعاملة، نبحث باستخدام counterparty
+        if not transaction and 'counterparty' in data:
+            counterparty = data.get('counterparty')
+            amount = data.get('amount')
+            currency = data.get('currency')
+            
+            app.logger.info(f"البحث باستخدام بيانات إضافية: الطرف المقابل={counterparty}, المبلغ={amount}, العملة={currency}")
+            
+            # البحث عن المعاملات التي تطابق الطرف المقابل والمبلغ والعملة
+            query = Transaction.query.filter_by(wallet=wallet)
+            
+            if counterparty:
+                query = query.filter_by(counterparty=counterparty)
+            
+            if amount:
+                query = query.filter_by(amount=float(amount))
+            
+            if currency:
+                query = query.filter_by(currency=currency)
+            
+            # الحصول على أحدث معاملة مطابقة
+            transaction = query.order_by(Transaction.timestamp.desc()).first()
+            app.logger.info(f"نتيجة البحث باستخدام البيانات الإضافية: {transaction}")
+        
+        if not transaction:
+            app.logger.error(f"لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}")
+            return jsonify({
+                'success': False,
+                'error': f'لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}'
+            }), 404
+        
+        # تحديث بيانات المعاملة
+        transaction.status = status
+        
+        # تحديث حالة التأكيد إذا تم توفيرها
+        if 'is_confirmed' in data:
+            transaction.is_confirmed_db = bool(data.get('is_confirmed'))
+        
+        # تحديث المشرف المنفذ
+        executed_by = data.get('executed_by')
+        if executed_by:
+            transaction.executed_by = executed_by
+        else:
+            transaction.executed_by = 'النظام التلقائي'
+        
+        app.logger.info(f"تحديث المعاملة: الحالة={transaction.status}, المنفذ={transaction.executed_by}, التأكيد={transaction.is_confirmed}")
+        
+        # حفظ التغييرات
+        db.session.commit()
+        app.logger.info("تم حفظ التغييرات بنجاح")
+        
+        return jsonify({
+            'success': True,
+            'message': f'تم تحديث حالة المعاملة {transaction_id} بنجاح',
+            'transaction': transaction.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"حدث خطأ أثناء تحديث المعاملة: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'حدث خطأ أثناء تحديث المعاملة: {str(e)}'
+        }), 500
 
 @app.route('/api/wallets/<wallet_name>/summary', methods=['GET'])
 def api_get_wallet_summary(wallet_name):
@@ -1278,126 +1574,6 @@ def api_get_wallet_summary(wallet_name):
         "wallet": wallet_name,
         "summary": summary
     })
-
-@app.route('/api/docs', methods=['GET'])
-@login_required
-def api_docs():
-    """توثيق واجهة برمجة التطبيقات"""
-    now = datetime.now()  # إضافة متغير التاريخ الحالي
-    return render_template('api_docs.html', now=now)
-
-# إضافة مسار متوافق مع التطبيق الثاني
-@app.route('/api/transactions/wallet/<wallet_name>', methods=['GET'])
-def api_get_transactions_alt_route(wallet_name):
-    """مسار بديل للحصول على معاملات محفظة محددة (للتوافق مع التطبيقات الخارجية)"""
-    return api_get_wallet_transactions(wallet_name)
-
-# إضافة API لتحديث حالة المعاملة
-@app.route('/api/update_transaction', methods=['POST'])
-def api_update_transaction():
-    """تحديث حالة المعاملة وبيانات المشرف من المشروع الأول"""
-    try:
-        # تسجيل استلام الطلب
-        app.logger.info("تم استلام طلب تحديث حالة المعاملة")
-        app.logger.info(f"البيانات المستلمة: {request.data}")
-        app.logger.info(f"الرؤوس: {request.headers}")
-        
-        # التحقق من مفتاح API
-        if not verify_api_key():
-            app.logger.error("مفتاح API غير صالح")
-            return jsonify({
-                'success': False,
-                'error': 'مفتاح API غير صالح'
-            }), 401
-        
-        # الحصول على البيانات من الطلب
-        data = request.json
-        if not data:
-            app.logger.error("لم يتم توفير بيانات في الطلب")
-            return jsonify({
-                'success': False,
-                'error': 'لم يتم توفير بيانات في الطلب'
-            }), 400
-        
-        # التحقق من وجود البيانات المطلوبة
-        required_fields = ['transaction_id', 'wallet', 'status']
-        missing_fields = [field for field in required_fields if field not in data]
-        if missing_fields:
-            app.logger.error(f"البيانات غير مكتملة: {missing_fields}")
-            return jsonify({
-                'success': False,
-                'error': f'البيانات غير مكتملة: {", ".join(missing_fields)}'
-            }), 400
-        
-        # البحث عن المعاملة باستخدام معرف المعاملة والمحفظة
-        transaction_id = data.get('transaction_id')
-        wallet = data.get('wallet')
-        
-        app.logger.info(f"البحث عن المعاملة: ID={transaction_id}, المحفظة={wallet}")
-        
-        # محاولة العثور على المعاملة باستخدام معرف المعاملة
-        transaction = Transaction.query.filter_by(transaction_id=transaction_id, wallet=wallet).first()
-        app.logger.info(f"نتيجة البحث باستخدام transaction_id: {transaction}")
-        
-        # إذا لم يتم العثور على المعاملة، نبحث باستخدام المعرف الرقمي
-        if not transaction and transaction_id.isdigit():
-            transaction = Transaction.query.filter_by(id=int(transaction_id), wallet=wallet).first()
-            app.logger.info(f"نتيجة البحث باستخدام id الرقمي: {transaction}")
-        
-        # إذا لم يتم العثور على المعاملة، نبحث باستخدام counterparty
-        if not transaction and 'counterparty' in data:
-            counterparty = data.get('counterparty')
-            amount = data.get('amount')
-            currency = data.get('currency')
-            
-            app.logger.info(f"البحث باستخدام بيانات إضافية: الطرف المقابل={counterparty}, المبلغ={amount}, العملة={currency}")
-            
-            # البحث عن المعاملات التي تطابق الطرف المقابل والمبلغ والعملة
-            query = Transaction.query.filter_by(wallet=wallet)
-            
-            if counterparty:
-                query = query.filter_by(counterparty=counterparty)
-            
-            if amount:
-                query = query.filter_by(amount=float(amount))
-            
-            if currency:
-                query = query.filter_by(currency=currency)
-            
-            # الحصول على أحدث معاملة مطابقة
-            transaction = query.order_by(Transaction.timestamp.desc()).first()
-            app.logger.info(f"نتيجة البحث باستخدام البيانات الإضافية: {transaction}")
-        
-        if not transaction:
-            app.logger.error(f"لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}")
-            return jsonify({
-                'success': False,
-                'error': f'لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}'
-            }), 404
-        
-        # تحديث بيانات المعاملة
-        transaction.status = data.get('status')
-        transaction.executed_by = data.get('executed_by', 'النظام التلقائي')
-        
-        app.logger.info(f"تحديث المعاملة: الحالة={transaction.status}, المنفذ={transaction.executed_by}")
-        
-        # حفظ التغييرات
-        db.session.commit()
-        app.logger.info("تم حفظ التغييرات بنجاح")
-        
-        return jsonify({
-            'success': True,
-            'message': f'تم تحديث حالة المعاملة {transaction_id} بنجاح',
-            'transaction': transaction.to_dict()
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"حدث خطأ أثناء تحديث المعاملة: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': f'حدث خطأ أثناء تحديث المعاملة: {str(e)}'
-        }), 500
 
 # تحميل المستخدم لـ Flask-Login
 @login_manager.user_loader
@@ -1539,3 +1715,159 @@ if __name__ == '__main__':
     
     # Run the app with the specified port and host
     app.run(host='0.0.0.0', port=port, debug=True)
+
+@app.route('/api/transaction/<transaction_id>/status', methods=['GET'])
+def api_get_transaction_status(transaction_id):
+    """الحصول على حالة معاملة محددة بواسطة المعرف (مخصص للتحقق من المعاملات)"""
+    if not verify_api_key():
+        return jsonify({"error": "غير مصرح به", "code": 401}), 401
+    
+    # البحث عن المعاملة باستخدام المعرف
+    transaction = None
+    wallet = request.args.get('wallet')
+    
+    # محاولة البحث باستخدام معرف المعاملة المخصص (TX...)
+    if transaction_id.startswith('TX'):
+        if wallet:
+            transaction = Transaction.query.filter_by(transaction_id=transaction_id, wallet=wallet).first()
+        else:
+            transaction = Transaction.query.filter_by(transaction_id=transaction_id).first()
+    
+    # إذا لم يتم العثور على المعاملة، نبحث باستخدام المعرف الرقمي
+    if not transaction and transaction_id.isdigit():
+        if wallet:
+            transaction = Transaction.query.filter_by(id=int(transaction_id), wallet=wallet).first()
+        else:
+            transaction = Transaction.query.get(int(transaction_id))
+    
+    if not transaction:
+        return jsonify({
+            "success": False,
+            "error": f"المعاملة {transaction_id} غير موجودة", 
+            "code": 404
+        }), 404
+    
+    # إعداد استجابة موحدة تحتوي على جميع الحقول المطلوبة للتحقق
+    response = {
+        "success": True,
+        "transaction_id": transaction.transaction_id,
+        "id": transaction.id,
+        "status": transaction.status,
+        "state": transaction.status,  # للتوافق مع الإصدارات السابقة
+        "confirmation_status": transaction.confirmation_status,
+        "is_confirmed": transaction.is_confirmed,
+        "executed_by": transaction.executed_by if transaction.executed_by else None,
+        "wallet": transaction.wallet,
+        "amount": float(transaction.amount) if transaction.amount is not None else 0.0,
+        "currency": transaction.currency,
+        "counterparty": transaction.counterparty
+    }
+    
+    return jsonify(response)
+
+@app.route('/api/wallets/<wallet_name>/transactions/<transaction_id>', methods=['GET'])
+def api_get_wallet_transaction(wallet_name, transaction_id):
+    """الحصول على معاملة محددة في محفظة محددة (للتوافق مع المشروع الأول)"""
+    if not verify_api_key():
+        return jsonify({"error": "غير مصرح به", "code": 401}), 401
+    
+    # البحث عن المعاملة باستخدام المعرف والمحفظة
+    transaction = None
+    
+    # محاولة البحث باستخدام معرف المعاملة المخصص (TX...)
+    if transaction_id.startswith('TX'):
+        transaction = Transaction.query.filter_by(transaction_id=transaction_id, wallet=wallet_name).first()
+    
+    # إذا لم يتم العثور على المعاملة، نبحث باستخدام المعرف الرقمي
+    if not transaction and transaction_id.isdigit():
+        transaction = Transaction.query.filter_by(id=int(transaction_id), wallet=wallet_name).first()
+    
+    if not transaction:
+        return jsonify({
+            "success": False,
+            "error": f"المعاملة {transaction_id} غير موجودة في محفظة {wallet_name}", 
+            "code": 404
+        }), 404
+    
+    # استخدام الدالة to_dict للحصول على تمثيل موحد للمعاملة
+    return jsonify({
+        "success": True,
+        "transaction": transaction.to_dict()
+    })
+
+@app.route('/api/update_transaction', methods=['POST'])
+def api_update_transaction():
+    """تحديث حالة معاملة"""
+    if not verify_api_key():
+        return jsonify({"error": "غير مصرح به", "code": 401}), 401
+    
+    # الحصول على البيانات من الطلب
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "البيانات المطلوبة غير موجودة", "code": 400}), 400
+    
+    # التحقق من وجود المعرف
+    transaction_id = data.get('transaction_id')
+    if not transaction_id:
+        return jsonify({"error": "معرف المعاملة مطلوب", "code": 400}), 400
+    
+    # البحث عن المعاملة
+    transaction = None
+    
+    # محاولة البحث باستخدام معرف المعاملة المخصص (TX...)
+    if isinstance(transaction_id, str) and transaction_id.startswith('TX'):
+        transaction = Transaction.query.filter_by(transaction_id=transaction_id).first()
+    
+    # إذا لم يتم العثور على المعاملة، نبحث باستخدام المعرف الرقمي
+    if not transaction and str(transaction_id).isdigit():
+        transaction = Transaction.query.get(int(transaction_id))
+    
+    if not transaction:
+        return jsonify({
+            "success": False,
+            "error": f"المعاملة {transaction_id} غير موجودة", 
+            "code": 404
+        }), 404
+    
+    # تحديث البيانات
+    status = data.get('status')
+    executed_by = data.get('executed_by')
+    is_confirmed = data.get('is_confirmed')
+    
+    # التحقق من صحة الحالة
+    if status is not None:
+        if status not in Transaction.VALID_STATUSES:
+            app.logger.warning(f"تم استلام حالة غير صالحة: {status}")
+            status = 'pending'  # استخدام القيمة الافتراضية
+        transaction.status = status
+    
+    # تحديث المنفذ إذا تم توفيره
+    if executed_by is not None:
+        transaction.executed_by = executed_by
+    
+    # تحديث حالة التأكيد إذا تم توفيرها
+    if is_confirmed is not None:
+        # تحويل القيمة إلى قيمة منطقية
+        if isinstance(is_confirmed, str):
+            is_confirmed = is_confirmed.lower() in ['true', '1', 'yes', 'نعم', 'مؤكدة', 'تم التأكيد']
+        transaction.is_confirmed_db = bool(is_confirmed)
+        app.logger.info(f"تم تحديث حالة التأكيد للمعاملة {transaction_id} إلى {is_confirmed}")
+    
+    try:
+        db.session.commit()
+        app.logger.info(f"تم تحديث المعاملة {transaction_id} بنجاح")
+        
+        # إعادة المعاملة المحدثة
+        return jsonify({
+            "success": True,
+            "message": "تم تحديث المعاملة بنجاح",
+            "transaction": transaction.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"خطأ أثناء تحديث المعاملة: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": f"خطأ أثناء تحديث المعاملة: {str(e)}",
+            "code": 500
+        }), 500
