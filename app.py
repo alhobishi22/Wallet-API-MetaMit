@@ -185,7 +185,7 @@ def parse_cash_sms(message):
         transaction['type'] = 'credit'
         # استخراج المبلغ والعملة مع السماح بوجود مسافات اختيارية
         # تم تعديل التعبير النمطي هنا (مثلاً، السطر 5-6)
-        amount_match = re.search(r'إضافة\s*(\d+(?:\.\d+)?)\s*([A-Z]+)', message)
+        amount_match = re.search(r'إضافة\s*(\d+(?:\.\d+)?)([^م]+)', message)
         if amount_match:
             transaction['amount'] = float(amount_match.group(1))
             transaction['currency'] = amount_match.group(2)
@@ -240,10 +240,14 @@ def parse_kuraimi_sms(message):
         if sender_match:
             transaction['counterparty'] = sender_match.group(1).strip()
         
-        # Extract amount and currency
-        amount_match = re.search(r'لحسابك(\d+(?:[\.\,]\d+)?) ([A-Z]+)', message)
+        # Extract amount and currency - تحسين التعبير النمطي
+        amount_match = re.search(r'لحسابك(\d+(?:[\.\,٫]\d+)?)\s*([A-Z]+)', message)
+        if not amount_match:
+            # صيغة بديلة بدون مسافات
+            amount_match = re.search(r'لحسابك(\d+(?:[\.\,٫]\d+)?)([A-Z]+)', message)
+        
         if amount_match:
-            # Handle amount with decimal separator (both . and ،)
+            # Handle amount with decimal separator (both . and ٫)
             amount_str = amount_match.group(1).replace('٫', '.')
             transaction['amount'] = float(amount_str)
             transaction['currency'] = amount_match.group(2)
@@ -274,7 +278,7 @@ def parse_kuraimi_sms(message):
                 return transaction
         
         if balance_match:
-            # Handle balance with decimal separator (both . and ،)
+            # Handle balance with decimal separator (both . and ٫)
             balance_str = balance_match.group(1).replace('٫', '.')
             try:
                 transaction['balance'] = float(balance_str)
@@ -289,22 +293,30 @@ def parse_kuraimi_sms(message):
     
     elif 'تم تحويل' in message:
         transaction['type'] = 'debit'
-        # Extract amount
-        amount_match = re.search(r'تم تحويل(\d+(?:[\.\,]\d+)?)', message)
+        # Extract amount - تحسين التعبير النمطي
+        amount_match = re.search(r'تم تحويل(\d+(?:[\.\,٫]\d+)?)', message)
         if amount_match:
-            # Handle amount with decimal separator (both . and ،)
+            # Handle amount with decimal separator (both . and ٫)
             amount_str = amount_match.group(1).replace('٫', '.')
             transaction['amount'] = float(amount_str)
         
-        # Extract recipient
+        # Extract recipient - تحسين التعبير النمطي ليتعامل مع صيغ مختلفة
         recipient_match = re.search(r'لحساب (.+?) رصيدك', message)
+        if not recipient_match:
+            # صيغة بديلة بدون مسافات
+            recipient_match = re.search(r'لحساب(.+?)رصيدك', message)
+        
         if recipient_match:
             transaction['counterparty'] = recipient_match.group(1).strip()
         
-        # Extract balance and currency
-        balance_match = re.search(r'رصيدك(\d+(?:[\.\,]\d+)?)([A-Z]+)', message)
+        # Extract balance and currency - تحسين التعبير النمطي
+        balance_match = re.search(r'رصيدك(\d+(?:[\.\,٫]\d+)?)([A-Z]+)', message)
+        if not balance_match:
+            # صيغة بديلة مع مسافات محتملة
+            balance_match = re.search(r'رصيدك\s*(\d+(?:[\.\,٫]\d+)?)\s*([A-Z]+)', message)
+        
         if balance_match:
-            # Handle balance with decimal separator (both . and ،)
+            # Handle balance with decimal separator (both . and ٫)
             balance_str = balance_match.group(1).replace('٫', '.')
             transaction['balance'] = float(balance_str)
             transaction['balance_currency'] = balance_match.group(2)
@@ -691,8 +703,54 @@ def wallet(wallet_name):
         flash('المحفظة غير موجودة', 'danger')
         return redirect(url_for('index'))
     
+    # استخراج معلمات الفلترة من الطلب
+    filter_type = request.args.get('type', '')  # نوع المعاملة (credit/debit)
+    filter_currency = request.args.get('currency', '')  # العملة
+    filter_date_from = request.args.get('date_from', '')  # تاريخ البداية
+    filter_date_to = request.args.get('date_to', '')  # تاريخ النهاية
+    filter_counterparty = request.args.get('counterparty', '')  # الطرف المقابل
+    filter_amount_min = request.args.get('amount_min', '')  # الحد الأدنى للمبلغ
+    filter_amount_max = request.args.get('amount_max', '')  # الحد الأقصى للمبلغ
+    
     # Get transactions for this wallet - sort by timestamp ascending (oldest first) for processing
-    transactions = Transaction.query.filter_by(wallet=wallet_name).order_by(Transaction.timestamp.asc(), Transaction.id.asc()).all()
+    query = Transaction.query.filter_by(wallet=wallet_name)
+    
+    # تطبيق الفلترة
+    if filter_type:
+        query = query.filter(Transaction.type == filter_type)
+    if filter_currency:
+        query = query.filter(Transaction.currency == filter_currency)
+    if filter_counterparty:
+        query = query.filter(Transaction.counterparty.ilike(f'%{filter_counterparty}%'))
+    if filter_date_from:
+        try:
+            date_from = datetime.datetime.strptime(filter_date_from, '%Y-%m-%d')
+            query = query.filter(Transaction.timestamp >= date_from)
+        except ValueError:
+            pass
+    if filter_date_to:
+        try:
+            date_to = datetime.datetime.strptime(filter_date_to, '%Y-%m-%d')
+            # Add one day to include the end date fully
+            date_to = date_to + datetime.timedelta(days=1)
+            query = query.filter(Transaction.timestamp < date_to)
+        except ValueError:
+            pass
+    if filter_amount_min:
+        try:
+            amount_min = float(filter_amount_min)
+            query = query.filter(Transaction.amount >= amount_min)
+        except ValueError:
+            pass
+    if filter_amount_max:
+        try:
+            amount_max = float(filter_amount_max)
+            query = query.filter(Transaction.amount <= amount_max)
+        except ValueError:
+            pass
+    
+    # تنفيذ الاستعلام وترتيب النتائج
+    transactions = query.order_by(Transaction.timestamp.asc(), Transaction.id.asc()).all()
     
     print(f"===== تحليل تأكيد المعاملات لمحفظة {wallet_name} =====")
     
@@ -802,6 +860,11 @@ def wallet(wallet_name):
                                             summary=summary, 
                                             charts=charts, 
                                             confirmed_status=confirmed_status,
+                                            # إضافة معلومات الفلترة إلى سياق القالب
+                                            filter_applied=any([filter_type, filter_currency, filter_date_from, 
+                                                               filter_date_to, filter_counterparty, 
+                                                               filter_amount_min, filter_amount_max]),
+                                            filter_count=len(transactions),
                                             now=format_yemen_datetime()))
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
@@ -899,6 +962,8 @@ def clear_wallet_data(wallet_name):
 @login_required
 def delete_transaction(transaction_id):
     """حذف معاملة محددة بواسطة معرفها"""
+    wallet_name = None
+    
     try:
         # البحث عن المعاملة بواسطة المعرف
         transaction = Transaction.query.get_or_404(transaction_id)
@@ -913,8 +978,11 @@ def delete_transaction(transaction_id):
         db.session.rollback()
         flash(f'حدث خطأ أثناء حذف المعاملة: {str(e)}', 'danger')
         
-    # إعادة التوجيه إلى صفحة المحفظة
-    return redirect(url_for('wallet', wallet_name=wallet_name))
+    # إعادة التوجيه إلى صفحة المحفظة إذا كان wallet_name معروفًا، وإلا إلى الصفحة الرئيسية
+    if wallet_name:
+        return redirect(url_for('wallet', wallet_name=wallet_name))
+    else:
+        return redirect(url_for('index'))
 
 @app.route('/update-transaction-status/<int:transaction_id>', methods=['POST'])
 @login_required
