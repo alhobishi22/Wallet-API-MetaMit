@@ -254,11 +254,11 @@ def parse_kuraimi_sms(message):
         
         # محاولة استخراج الرصيد بعدة صيغ مختلفة
         # الصيغة الأولى: رصيدك مباشرة متبوعًا بالرقم والعملة (مثل رصيدك1669521٫31YER)
-        balance_match = re.search(r'رصيدك(\d+(?:[\.٫\,]\d+)?)([A-Z]+)', message)
+        balance_match = re.search(r'رصيدك(\d+(?:[\.\,٫]\d+)?)([A-Z]+)', message)
         
         # إذا لم يجد الصيغة الأولى، نجرب الصيغة الثانية مع وجود مسافات محتملة
         if not balance_match:
-            balance_match = re.search(r'رصيدك\s*(\d+(?:[\.٫\,]\d+)?)\s*([A-Z]+)', message)
+            balance_match = re.search(r'رصيدك\s*(\d+(?:[\.\,٫]\d+)?)\s*([A-Z]+)', message)
         
         # إذا لم يجد أيضًا، نجرب الصيغة الثالثة بدون كلمة "رصيدك" (للعملات الأخرى)
         if not balance_match:
@@ -452,6 +452,16 @@ def parse_sms(sms_text):
             
         if transaction and all(key in transaction for key in ['amount', 'currency']):
             print(f"تم اكتشاف معاملة صالحة: {transaction}")
+            
+            # تنظيف قيمة العملة من المسافات الزائدة
+            if 'currency' in transaction and transaction['currency']:
+                transaction['currency'] = transaction['currency'].strip()
+                
+                # التأكد من أن العملة هي إحدى العملات المدعومة
+                if transaction['currency'] not in ['YER', 'USD', 'SAR']:
+                    print(f"عملة غير معروفة: {transaction['currency']}، سيتم استخدام YER بدلاً منها")
+                    transaction['currency'] = 'YER'
+            
             transaction['wallet'] = wallet_name
             transaction['raw_message'] = message
             transaction['timestamp'] = datetime.now(YEMEN_TIMEZONE).strftime('%Y-%m-%d %H:%M:%S')
@@ -659,14 +669,22 @@ def index():
                 
             # تحديث البيانات للعملات التي لديها معاملات فعلية
             for transaction in [t for t in transactions if t.wallet == wallet]:
-                if transaction.type == 'credit':
-                    summary[wallet][transaction.currency]['credits'] += transaction.amount
-                else:
-                    summary[wallet][transaction.currency]['debits'] += transaction.amount
+                # تنظيف قيمة العملة من المسافات الزائدة
+                currency = transaction.currency.strip() if transaction.currency else 'YER'
                 
-                summary[wallet][transaction.currency]['net'] = (
-                    summary[wallet][transaction.currency]['credits'] - 
-                    summary[wallet][transaction.currency]['debits']
+                # التأكد من أن العملة موجودة في قائمة العملات المدعومة
+                if currency not in currencies:
+                    app.logger.warning(f"عملة غير معروفة: {currency}، سيتم استخدام YER بدلاً منها")
+                    currency = 'YER'
+                
+                if transaction.type == 'credit':
+                    summary[wallet][currency]['credits'] += transaction.amount
+                else:
+                    summary[wallet][currency]['debits'] += transaction.amount
+                
+                summary[wallet][currency]['net'] = (
+                    summary[wallet][currency]['credits'] - 
+                    summary[wallet][currency]['debits']
                 )
         
         # Generate wallet charts
@@ -1229,7 +1247,16 @@ def api_get_transactions(specific_wallet=None):
     if wallet:
         query = query.filter_by(wallet=wallet)
     if currency:
-        query = query.filter_by(currency=currency)
+        try:
+            # تحسين معالجة العملة للتعامل مع YER بشكل صحيح
+            if currency in ['YER', 'USD', 'SAR']:
+                query = query.filter_by(currency=currency)
+            else:
+                app.logger.warning(f"عملة غير معروفة: {currency}، سيتم تجاهلها")
+        except Exception as e:
+            app.logger.error(f"خطأ في معالجة العملة: {str(e)}")
+            # استخدام استعلام أكثر مرونة في حالة الخطأ
+            query = query
     if transaction_type:
         query = query.filter_by(type=transaction_type)
     if start_date:
@@ -1326,7 +1353,7 @@ def api_get_transaction(transaction_id):
         "transaction": transaction_data
     })
 
-@app.route('/api/transactions/update_status', methods=['POST'])
+@app.route('/api/transactions/update-status', methods=['POST'])
 def api_update_transaction_v2():
     """تحديث حالة المعاملة وبيانات المشرف من المشروع الأول"""
     try:
@@ -1365,87 +1392,50 @@ def api_update_transaction_v2():
         # التحقق من صحة قيمة الحالة
         status = data.get('status')
         if status not in Transaction.VALID_STATUSES:
-            app.logger.warning(f"قيمة الحالة '{status}' غير صالحة، سيتم استخدام 'pending'")
-            status = 'pending'
-        
-        # البحث عن المعاملة باستخدام معرف المعاملة والمحفظة
-        transaction_id = data.get('transaction_id')
-        wallet = data.get('wallet')
-        
-        app.logger.info(f"البحث عن المعاملة: ID={transaction_id}, المحفظة={wallet}")
-        
-        # محاولة العثور على المعاملة باستخدام معرف المعاملة
-        transaction = Transaction.query.filter_by(transaction_id=transaction_id, wallet=wallet).first()
-        app.logger.info(f"نتيجة البحث باستخدام transaction_id: {transaction}")
-        
-        # إذا لم يتم العثور على المعاملة، نبحث باستخدام المعرف الرقمي
-        if not transaction and transaction_id.isdigit():
-            transaction = Transaction.query.filter_by(id=int(transaction_id), wallet=wallet).first()
-            app.logger.info(f"نتيجة البحث باستخدام id الرقمي: {transaction}")
-        
-        # إذا لم يتم العثور على المعاملة، نبحث باستخدام counterparty
-        if not transaction and 'counterparty' in data:
-            counterparty = data.get('counterparty')
-            amount = data.get('amount')
-            currency = data.get('currency')
-            
-            app.logger.info(f"البحث باستخدام بيانات إضافية: الطرف المقابل={counterparty}, المبلغ={amount}, العملة={currency}")
-            
-            # البحث عن المعاملات التي تطابق الطرف المقابل والمبلغ والعملة
-            query = Transaction.query.filter_by(wallet=wallet)
-            
-            if counterparty:
-                query = query.filter_by(counterparty=counterparty)
-            
-            if amount:
-                query = query.filter_by(amount=float(amount))
-            
-            if currency:
-                query = query.filter_by(currency=currency)
-            
-            # الحصول على أحدث معاملة مطابقة
-            transaction = query.order_by(Transaction.timestamp.desc()).first()
-            app.logger.info(f"نتيجة البحث باستخدام البيانات الإضافية: {transaction}")
-        
-        if not transaction:
-            app.logger.error(f"لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}")
-            return jsonify({
-                'success': False,
-                'error': f'لم يتم العثور على معاملة بالمعرف {transaction_id} في محفظة {wallet}'
-            }), 404
-        
-        # تحديث بيانات المعاملة
+            app.logger.warning(f"تم استلام حالة غير صالحة: {status}")
+            status = 'pending'  # استخدام القيمة الافتراضية
         transaction.status = status
         
-        # تحديث حالة التأكيد إذا تم توفيرها
-        if 'is_confirmed' in data:
-            transaction.is_confirmed_db = bool(data.get('is_confirmed'))
-        
-        # تحديث المشرف المنفذ
+        # تحديث المنفذ إذا تم توفيره
         executed_by = data.get('executed_by')
         if executed_by:
             transaction.executed_by = executed_by
-        else:
-            transaction.executed_by = 'النظام التلقائي'
         
-        app.logger.info(f"تحديث المعاملة: الحالة={transaction.status}, المنفذ={transaction.executed_by}, التأكيد={transaction.is_confirmed}")
+        # تحديث حالة التأكيد إذا تم توفيرها
+        is_confirmed = data.get('is_confirmed')
+        if is_confirmed is not None:
+            # تحويل القيمة إلى قيمة منطقية
+            if isinstance(is_confirmed, str):
+                is_confirmed = is_confirmed.lower() in ['true', '1', 'yes', 'نعم', 'مؤكدة', 'تم التأكيد']
+            transaction.is_confirmed_db = bool(is_confirmed)
+            app.logger.info(f"تم تحديث حالة التأكيد للمعاملة {transaction_id} إلى {is_confirmed}")
         
-        # حفظ التغييرات
-        db.session.commit()
-        app.logger.info("تم حفظ التغييرات بنجاح")
-        
-        return jsonify({
-            'success': True,
-            'message': f'تم تحديث حالة المعاملة {transaction_id} بنجاح',
-            'transaction': transaction.to_dict()
-        })
-        
+        try:
+            db.session.commit()
+            app.logger.info(f"تم تحديث المعاملة {transaction_id} بنجاح")
+            
+            # إعادة المعاملة المحدثة
+            return jsonify({
+                "success": True,
+                "message": f'تم تحديث حالة المعاملة {transaction_id} بنجاح',
+                "transaction": transaction.to_dict()
+            })
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"خطأ أثناء تحديث المعاملة: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": f"خطأ أثناء تحديث المعاملة: {str(e)}",
+                "code": 500
+            }), 500
+    
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"حدث خطأ أثناء تحديث المعاملة: {str(e)}")
+        app.logger.error(f"خطأ أثناء تحديث المعاملة: {str(e)}")
         return jsonify({
-            'success': False,
-            'error': f'حدث خطأ أثناء تحديث المعاملة: {str(e)}'
+            "success": False,
+            "error": f"خطأ أثناء تحديث المعاملة: {str(e)}",
+            "code": 500
         }), 500
 
 @app.route('/api/docs', methods=['GET'])
@@ -1461,7 +1451,7 @@ def api_get_transactions_alt_route(wallet_name):
     """مسار بديل للحصول على معاملات محفظة محددة (للتوافق مع التطبيقات الخارجية)"""
     return api_get_wallet_transactions(wallet_name)
 
-@app.route('/api/update_transaction_alt', methods=['POST'])
+@app.route('/api/update-transaction-alt', methods=['POST'])
 def api_update_transaction():
     """تحديث حالة معاملة"""
     if not verify_api_key():
@@ -1499,6 +1489,7 @@ def api_update_transaction():
     status = data.get('status')
     executed_by = data.get('executed_by')
     is_confirmed = data.get('is_confirmed')
+    currency = data.get('currency')
     
     # التحقق من صحة الحالة
     if status is not None:
@@ -1518,6 +1509,15 @@ def api_update_transaction():
             is_confirmed = is_confirmed.lower() in ['true', '1', 'yes', 'نعم', 'مؤكدة', 'تم التأكيد']
         transaction.is_confirmed_db = bool(is_confirmed)
         app.logger.info(f"تم تحديث حالة التأكيد للمعاملة {transaction_id} إلى {is_confirmed}")
+    
+    # تحديث العملة إذا تم توفيرها
+    if currency is not None:
+        # التحقق من صحة العملة
+        if currency in ['YER', 'USD', 'SAR']:
+            transaction.currency = currency
+            app.logger.info(f"تم تحديث عملة المعاملة {transaction_id} إلى {currency}")
+        else:
+            app.logger.warning(f"تم استلام عملة غير صالحة: {currency}، سيتم تجاهلها")
     
     try:
         db.session.commit()
@@ -1814,7 +1814,7 @@ def api_get_wallet_transaction(wallet_name, transaction_id):
         "transaction": transaction.to_dict()
     })
 
-@app.route('/api/transactions/update_status', methods=['POST'])
+@app.route('/api/transactions/update-status', methods=['POST'])
 def api_update_transaction_alt():
     """تحديث حالة معاملة"""
     if not verify_api_key():
@@ -1852,6 +1852,7 @@ def api_update_transaction_alt():
     status = data.get('status')
     executed_by = data.get('executed_by')
     is_confirmed = data.get('is_confirmed')
+    currency = data.get('currency')
     
     # التحقق من صحة الحالة
     if status is not None:
@@ -1871,6 +1872,15 @@ def api_update_transaction_alt():
             is_confirmed = is_confirmed.lower() in ['true', '1', 'yes', 'نعم', 'مؤكدة', 'تم التأكيد']
         transaction.is_confirmed_db = bool(is_confirmed)
         app.logger.info(f"تم تحديث حالة التأكيد للمعاملة {transaction_id} إلى {is_confirmed}")
+    
+    # تحديث العملة إذا تم توفيرها
+    if currency is not None:
+        # التحقق من صحة العملة
+        if currency in ['YER', 'USD', 'SAR']:
+            transaction.currency = currency
+            app.logger.info(f"تم تحديث عملة المعاملة {transaction_id} إلى {currency}")
+        else:
+            app.logger.warning(f"تم استلام عملة غير صالحة: {currency}، سيتم تجاهلها")
     
     try:
         db.session.commit()
