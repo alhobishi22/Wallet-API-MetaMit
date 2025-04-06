@@ -2,51 +2,71 @@
 سكريبت لإنشاء جداول قاعدة البيانات وإضافة مستخدم مشرف افتراضي
 """
 from flask import Flask
-from models import db, User, Transaction
+from models import db, User
+from werkzeug.security import generate_password_hash
 import os
+from sqlalchemy import text
 
 app = Flask(__name__)
-
-# استخدام قاعدة بيانات SQLite المحلية
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///metabit_safty_db.sqlite'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = 'wallet_sms_analyzer_secret_key'
+app.config.from_object('config')
 
 db.init_app(app)
 
 def create_tables_and_admin():
     """إنشاء جداول قاعدة البيانات وإضافة مستخدم مشرف افتراضي"""
     with app.app_context():
-        # إنشاء جميع الجداول
-        print("إنشاء جداول قاعدة البيانات...")
+        # حذف وإعادة إنشاء جدول المستخدمين
+        print("إعادة إنشاء جداول قاعدة البيانات...")
         try:
-            db.create_all()
-            print("تم إنشاء جميع الجداول بنجاح")
+            db.session.execute(text("DROP TABLE IF EXISTS users CASCADE"))
+            db.session.commit()
+            print("تم حذف جدول المستخدمين بنجاح (إذا كان موجوداً)")
         except Exception as e:
-            print(f"خطأ أثناء إنشاء الجداول: {e}")
+            db.session.rollback()
+            print(f"خطأ أثناء حذف جدول المستخدمين: {e}")
+        
+        # إنشاء جدول المستخدمين يدوياً
+        try:
+            db.session.execute(text("""
+            CREATE TABLE users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(64) UNIQUE NOT NULL,
+                email VARCHAR(120) UNIQUE NOT NULL,
+                password_hash VARCHAR(256) NOT NULL,
+                is_admin BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                last_login TIMESTAMP NULL
+            )
+            """))
+            db.session.commit()
+            print("تم إنشاء جدول المستخدمين بنجاح")
+        except Exception as e:
+            db.session.rollback()
+            print(f"خطأ أثناء إنشاء جدول المستخدمين: {e}")
             return
         
         # إضافة مستخدم مشرف افتراضي
         try:
-            # التحقق من وجود المستخدم
-            admin = User.query.filter_by(username='admin').first()
-            if not admin:
-                admin = User(
-                    username='admin',
-                    email='admin@example.com',
-                    is_admin=True
-                )
-                admin.set_password('admin123')
-                db.session.add(admin)
-                db.session.commit()
-                print("تم إنشاء مستخدم مشرف افتراضي:")
-                print("اسم المستخدم: admin")
-                print("كلمة المرور: admin123")
-            else:
-                print("المستخدم المشرف موجود بالفعل")
+            db.session.execute(
+                text("""
+                INSERT INTO users (username, email, password_hash, is_admin)
+                VALUES (:username, :email, :password_hash, :is_admin)
+                """),
+                {
+                    "username": "admin",
+                    "email": "admin@metabit.com",
+                    "password_hash": generate_password_hash("MetaBit@2025"),
+                    "is_admin": True
+                }
+            )
+            db.session.commit()
+            print("تم إنشاء مستخدم مشرف افتراضي:")
+            print("اسم المستخدم: admin")
+            print("كلمة المرور: MetaBit@2025")
+            print("يرجى تغيير كلمة المرور بعد تسجيل الدخول.")
         except Exception as e:
             db.session.rollback()
-            print(f"خطأ أثناء إنشاء المستخدم المشرف: {e}")
+            print(f"خطأ أثناء إنشاء مستخدم مشرف افتراضي: {e}")
 
 if __name__ == "__main__":
     create_tables_and_admin()
