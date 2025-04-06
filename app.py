@@ -626,10 +626,7 @@ def generate_charts(transactions):
     
     return charts
 
-def generate_wallet_charts(transactions):
-    """Generate charts for transaction visualization."""
-    # تم إلغاء الرسوم البيانية
-    return {}
+
 
 @app.route('/')
 @login_required
