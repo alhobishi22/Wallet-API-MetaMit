@@ -54,7 +54,9 @@ WALLET_TYPES = ['Jaib', 'Jawali', 'Cash', 'KuraimiIMB', 'ONE Cash']
 
 # تكوين منطقة التوقيت لليمن
 YEMEN_TIMEZONE = pytz.timezone('Asia/Aden')
-
+@app.route('/')
+def index():
+    return "Wallet API is running."
 # دالة مساعدة لتنسيق التاريخ والوقت بتوقيت اليمن
 def format_yemen_datetime(dt_str=None):
     """تنسيق التاريخ والوقت حسب توقيت اليمن"""
