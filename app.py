@@ -54,9 +54,7 @@ WALLET_TYPES = ['Jaib', 'Jawali', 'Cash', 'KuraimiIMB', 'ONE Cash']
 
 # تكوين منطقة التوقيت لليمن
 YEMEN_TIMEZONE = pytz.timezone('Asia/Aden')
-@app.route('/')
-def index():
-    return "Wallet API is running."
+
 # دالة مساعدة لتنسيق التاريخ والوقت بتوقيت اليمن
 def format_yemen_datetime(dt_str=None):
     """تنسيق التاريخ والوقت حسب توقيت اليمن"""
@@ -628,6 +626,12 @@ def index():
     try:
         # تعديل طريقة جلب المعاملات ليتم ترتيبها حسب التاريخ الأحدث
         transactions = Transaction.query.order_by(Transaction.timestamp.desc()).all()
+        
+        # تنظيف رموز العملات من المسافات الزائدة
+        for transaction in transactions:
+            if transaction.currency and isinstance(transaction.currency, str):
+                transaction.currency = transaction.currency.strip()
+        
         wallets = {}
         for transaction in transactions:
             if transaction.wallet not in wallets:
@@ -1534,7 +1538,7 @@ def api_get_wallet_summary(wallet_name):
 # تحميل المستخدم لـ Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 # وظيفة مساعدة للتحقق من صلاحيات المشرف
 def admin_required(f):
